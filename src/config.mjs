@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
+import { SITE_FIELDS } from "./serialize.mjs";
 
 const CONFIG_NAMES = [
   "pressroom.config.mjs",
@@ -35,8 +36,17 @@ export function defaults() {
     authors: [],
     // Push after committing? `--no-push` overrides per run.
     push: true,
+    // The extension of a post file new to the site: ".mdx", or ".md" for a site that
+    // builds only Markdown (Eleventy, by default). A post the site has keeps its own.
+    extension: ".mdx",
+    // The frontmatter key names the site reads, where they differ from pressroom's
+    // (title, description, date, tags, author). The Astro blog template: { date: "pubDate" }.
+    fields: {},
   };
 }
+
+/** A config problem worth one sentence (the CLI prints the message, not a stack). */
+export class ConfigError extends Error {}
 
 /**
  * `git config user.name` as git resolves it from `cwd` (repo config, then global),
@@ -70,9 +80,37 @@ export function findConfig(startDir = process.cwd()) {
 }
 
 async function loadRaw(file) {
-  if (file.endsWith(".json")) return JSON.parse(fs.readFileSync(file, "utf8"));
-  const mod = await import(pathToFileURL(file).href);
-  return mod.default ?? mod.config ?? mod;
+  try {
+    if (file.endsWith(".json")) return JSON.parse(fs.readFileSync(file, "utf8"));
+    const mod = await import(pathToFileURL(file).href);
+    return mod.default ?? mod.config ?? mod;
+  } catch (e) {
+    const why = String(e?.message ?? e).split("\n")[0].replace(/\.$/, "");
+    throw new ConfigError(`Couldn't load ${file}: ${why}. Fix the file and try again.`);
+  }
+}
+
+/** `fields` → every SITE_FIELDS key mapped to a valid frontmatter key name. */
+function normalizeFields(raw, file) {
+  if (raw == null) return { ...SITE_FIELDS };
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new ConfigError(`fields in ${file || "your config"} must be an object, like { date: "pubDate" }.`);
+  }
+  const out = { ...SITE_FIELDS };
+  for (const [key, value] of Object.entries(raw)) {
+    if (!(key in SITE_FIELDS)) {
+      throw new ConfigError(`fields.${key} in ${file || "your config"} isn't one pressroom writes. It maps ${Object.keys(SITE_FIELDS).join(", ")}.`);
+    }
+    const name = String(value ?? "").trim();
+    if (!/^[A-Za-z_][\w-]*$/.test(name)) {
+      throw new ConfigError(`fields.${key} in ${file || "your config"} must be a frontmatter key name, like "pubDate".`);
+    }
+    out[key] = name;
+  }
+  if (new Set(Object.values(out)).size !== Object.keys(out).length) {
+    throw new ConfigError(`fields in ${file || "your config"} maps two of pressroom's keys to the same name.`);
+  }
+  return out;
 }
 
 /**
@@ -100,6 +138,11 @@ export async function loadConfig({ cwd = process.cwd(), overrides = {} } = {}) {
   merged.push = merged.push !== false;
   merged.contentDir = String(merged.contentDir || "content/posts").replace(/^[/\\]+|[/\\]+$/g, "");
   merged.branch = String(merged.branch || "main");
+  merged.fields = normalizeFields(merged.fields, found ? found.file : null);
+  merged.extension = `.${String(merged.extension || "mdx").trim().replace(/^\./, "")}`;
+  if (merged.extension !== ".mdx" && merged.extension !== ".md") {
+    throw new ConfigError(`extension in ${found ? found.file : "your config"} must be ".mdx" or ".md".`);
+  }
   merged.authors = Array.isArray(merged.authors)
     ? merged.authors.map((a) => String(a ?? "").trim()).filter(Boolean)
     : [];

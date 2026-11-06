@@ -4,9 +4,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
-/** "YYYY-MM-DD" for today (local-agnostic; UTC date is fine for a byline). */
-export function today() {
-  return new Date().toISOString().slice(0, 10);
+/**
+ * "YYYY-MM-DD" for today on this computer's calendar: a post published on a
+ * Tuesday evening in California is dated Tuesday, not Wednesday (the UTC day).
+ */
+export function today(now = new Date()) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
 /** A full ISO-ish stamp, seconds precision, for created/updated bookkeeping. */
@@ -49,8 +53,19 @@ export function git(args, cwd) {
     const err = new Error(stderr || e?.message || "git failed");
     err.stderr = stderr;
     err.code = e?.status;
+    err.missing = e?.code === "ENOENT"; // no git on PATH
     throw err;
   }
+}
+
+/** `git` with its output, or "" when it fails (a missing ref, an unset key). */
+export function gitOr(args, cwd, fallback = "") {
+  try { return git(args, cwd); } catch { return fallback; }
+}
+
+/** Can this machine run git at all? */
+export function hasGit() {
+  try { git(["--version"], process.cwd()); return true; } catch (e) { return !e.missing; }
 }
 
 /** Is `dir` the top of (or inside) a real git repo? */

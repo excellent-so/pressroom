@@ -5,11 +5,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadConfig, contentPostsDir } from "./config.mjs";
+import { loadConfig, contentPostsDir, ConfigError } from "./config.mjs";
 import { newPost, listPosts, STATUSES } from "./posts.mjs";
-import { publishPost, publishReady } from "./publish.mjs";
-import { importPostsFromSite } from "./import.mjs";
-import { isGitRepo } from "./lib.mjs";
+import { publishPost, publishReady, siteProblem } from "./publish.mjs";
+import { importPostsFromSite, siteDateKey } from "./import.mjs";
+import { hasGit, gitOr, isGitRepo } from "./lib.mjs";
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -25,9 +25,36 @@ function parseFlags(argv) {
   return { f, positionals };
 }
 
-function resolvePort(v, dflt = 4640) {
+// The flags each command takes. Anything else is refused, so a typo like
+// `--dryrun` can never turn into a real publish.
+const CONFIG_FLAGS = ["site-repo", "posts-dir", "content-dir", "branch", "author"];
+const COMMAND_FLAGS = {
+  new: CONFIG_FLAGS,
+  list: CONFIG_FLAGS,
+  publish: [...CONFIG_FLAGS, "all", "dry-run", "no-push"],
+  import: [...CONFIG_FLAGS, "from"],
+  serve: [...CONFIG_FLAGS, "port"],
+  open: [...CONFIG_FLAGS, "port"],
+  doctor: CONFIG_FLAGS,
+  init: ["force"],
+};
+
+class UsageError extends Error {}
+
+function checkFlags(cmd, f) {
+  for (const name of Object.keys(f)) {
+    if (!COMMAND_FLAGS[cmd].includes(name)) {
+      throw new UsageError(`pressroom ${cmd} doesn't take --${name}. Run pressroom --help to see its options.`);
+    }
+  }
+}
+
+function resolvePort(v) {
   const n = Number(v);
-  return Number.isFinite(n) && n > 0 && n < 65536 ? Math.floor(n) : dflt;
+  if (!Number.isInteger(n) || n < 1 || n > 65535) {
+    throw new UsageError(`The port must be a whole number from 1 to 65535 (got ${v}).`);
+  }
+  return n;
 }
 
 /** Build config overrides from common CLI flags. */
@@ -45,6 +72,10 @@ async function setup(f) {
   return loadConfig({ overrides: overridesFromFlags(f) });
 }
 
+function version() {
+  try { return JSON.parse(fs.readFileSync(path.join(PKG_ROOT, "package.json"), "utf8")).version; } catch { return "unknown"; }
+}
+
 /* ── small terminal helpers (never leak ANSI on a pipe) ──────────────────── */
 
 const TTY = process.stdout.isTTY;
@@ -53,6 +84,7 @@ const dim = (s) => paint("2", s);
 const bold = (s) => paint("1", s);
 const STATUS_COLOR = { draft: "2", ready: "33", published: "32" };
 const statusTag = (s) => paint(STATUS_COLOR[s] || "0", s);
+const indent = (text, pad = "    ") => String(text).split("\n").map((l) => pad + l).join("\n");
 
 /* ── the router ──────────────────────────────────────────────────────────── */
 
@@ -60,17 +92,24 @@ async function main() {
   const [cmd = "help", ...rest] = process.argv.slice(2);
   const { f, positionals } = parseFlags(rest);
 
+  if (["help", "--help", "-h"].includes(cmd) || f.help || rest.includes("-h")) return printHelp();
+  if (["--version", "-v", "version"].includes(cmd)) return console.log(version());
+  if (!COMMAND_FLAGS[cmd]) {
+    throw new UsageError(`${cmd} isn't a pressroom command. Run pressroom --help to see the commands.`);
+  }
+  checkFlags(cmd, f);
+
   switch (cmd) {
     case "new": {
       const { config } = await setup(f);
       const title = positionals.join(" ").trim();
-      if (!title) { console.error("Usage: pressroom new <title>"); process.exit(1); }
+      if (!title) throw new UsageError('Give the post a title: pressroom new "My first post"');
       const post = newPost(config, { title });
       const rel = path.relative(process.cwd(), path.join(config.postsDir, `${post.slug}.mdx`));
       console.log(`\n  ${paint("32", "✓")} new draft ${bold(post.slug)}`);
       console.log(`  ${dim(rel)}\n`);
       console.log(`  Edit it, then preview:  ${bold("pressroom open")}`);
-      console.log(`  Mark it ready + ship:   ${bold(`pressroom publish ${post.slug}`)}\n`);
+      console.log(`  Set status: ready, then publish:  ${bold(`pressroom publish ${post.slug}`)}\n`);
       break;
     }
 
@@ -106,36 +145,41 @@ async function main() {
       if (f.all) {
         const r = publishReady(config, { dryRun, push });
         reportDrain(r, { dryRun });
-        if (!r.ok) process.exit(1);
+        if (!r.ok) process.exitCode = 1;
         break;
       }
       const slug = positionals[0];
-      if (!slug) { console.error("Usage: pressroom publish <slug> | --all   [--dry-run] [--no-push]"); process.exit(1); }
+      if (!slug) throw new UsageError("Name the post to publish: pressroom publish <slug>, or pressroom publish --all. pressroom list shows the slugs.");
       const r = publishPost(config, slug, { dryRun, push });
       reportPublish(r, { dryRun });
-      if (!r.ok) process.exit(1);
+      if (!r.ok) process.exitCode = 1;
       break;
     }
 
     case "import": {
       const { config } = await setup(f);
-      const from = f.from ? String(f.from) : undefined;
+      const from = f.from && f.from !== true ? String(f.from) : undefined;
+      if (f.from === true) throw new UsageError("--from needs a folder: pressroom import --from=<folder>");
       const r = importPostsFromSite(config, { from });
       if (!r.ok) {
-        console.error(`\n  ✗ import failed: ${r.reason}`);
-        console.error(`  ${dim(`source: ${from || contentPostsDir(config) || "(no siteRepo configured)"}`)}\n`);
-        process.exit(1);
+        console.error(`\n  ${paint("31", "✗")} ${r.message}\n`);
+        process.exitCode = 1;
+        break;
       }
-      console.log(`\n  ${paint("32", "✓")} imported ${r.slugs.length} post(s) → ${dim(config.postsDir)}`);
-      console.log(`  ${dim(`${r.imported} new · ${r.updated} updated · ${r.unchanged} unchanged`)}\n`);
+      const source = from ? path.resolve(from) : contentPostsDir(config);
+      console.log(`\n  ${paint("32", "✓")} imported ${r.slugs.length} post(s) from ${dim(source)} → ${dim(config.postsDir)}`);
+      console.log(`  ${dim(`${r.imported} new · ${r.updated} updated · ${r.unchanged} unchanged`)}${r.skipped.length ? "" : "\n"}`);
+      if (r.skipped.length) {
+        console.log(`  ${paint("33", "!")} left out ${r.skipped.join(", ")}: frontmatter pressroom can't read in full (not YAML, or values over several lines)\n`);
+      }
       break;
     }
 
     case "serve":
     case "open": {
+      const port = f.port !== undefined ? resolvePort(f.port) : (process.env.PORT ? resolvePort(process.env.PORT) : 4640);
       const { config, root, file } = await setup(f);
       const { serve } = await import("./serve.mjs");
-      const port = f.port ? resolvePort(f.port) : (process.env.PORT ? resolvePort(process.env.PORT) : 4640);
       // Pass the config root + file so an in-app Connect can persist without a hand-edit.
       serve(config, { port, open: cmd === "open", root, configFile: file });
       break;
@@ -145,55 +189,67 @@ async function main() {
       const { config, file } = await setup(f);
       const posts = listPosts(config);
       const cdir = contentPostsDir(config);
+      const gitOk = hasGit();
+      const problem = siteProblem(config, { push: config.push });
       const siteOk = config.siteRepo && isGitRepo(config.siteRepo);
       const cdirOk = cdir && fs.existsSync(cdir);
       const mark = (ok) => (ok ? paint("32", "✓") : paint("31", "✗"));
+      const k = config.fields;
+      const renamed = Object.entries(k).filter(([a, b]) => a !== b).map(([a, b]) => `${a} → ${b}`);
       console.log("\npressroom — doctor\n");
       console.log(`  config:      ${file || dim("(none — using defaults; run `pressroom init`)")}`);
-      console.log(`  postsDir:    ${config.postsDir}  ${fs.existsSync(config.postsDir) ? paint("32", "✓") : dim("(will be created on first `new`)")}`);
+      console.log(`  git:         ${gitOk ? gitOr(["--version"], process.cwd()).replace(/^git version /, "") + "  " + mark(true) : mark(false) + " not found on your PATH"}`);
+      console.log(`  postsDir:    ${config.postsDir}  ${fs.existsSync(config.postsDir) ? mark(true) : dim("(will be created on first `new`)")}`);
       console.log(`  siteRepo:    ${config.siteRepo || dim("(not set — publishing is disabled)")}  ${config.siteRepo ? mark(siteOk) + (siteOk ? "" : " not a git repo") : ""}`);
       console.log(`  contentDir:  ${config.contentDir}  →  ${cdir ? cdir : dim("(needs siteRepo)")}  ${cdir ? mark(cdirOk) + (cdirOk ? "" : " missing") : ""}`);
       console.log(`  branch:      ${config.branch}`);
+      console.log(`  fields:      ${renamed.length ? renamed.join(", ") : dim("title, description, date, tags, author")}`);
+      console.log(`  extension:   ${config.extension} ${dim("(for posts new to the site)")}`);
       const authorNote = config.authorFrom === "git" ? dim("  (from git config user.name)") : "";
       console.log(`  author:      ${config.defaultAuthor ? config.defaultAuthor + authorNote : dim("(none: set defaultAuthor or git config user.name)")}`);
       console.log(`  push:        ${config.push ? "yes" : "no (--no-push forced by config)"}`);
       console.log("");
       for (const s of STATUSES) console.log(`  ${s.padEnd(11)}${posts.filter((p) => p.status === s).length}`);
       const pending = posts.filter((p) => p.status === "ready").length;
-      console.log(`\n  ${pending ? bold(`${pending} post(s) ready to publish`) + ` — run ${bold("pressroom publish --all")}` : dim("nothing queued to publish")}\n`);
+      const dateKey = cdirOk ? siteDateKey(cdir, k.date) : null;
+      if (dateKey) {
+        console.log(`\n  ${paint("33", "!")} The site's posts keep their date in ${dateKey}, but publish writes ${k.date}. Add fields: { date: "${dateKey}" } to your config.`);
+      }
+      if (problem) {
+        console.log(`\n  ${paint("31", "✗")} ${problem[1]}\n`);
+        process.exitCode = 1;
+      } else {
+        console.log(`\n  ${pending ? bold(`${pending} post(s) ready to publish`) + ` — run ${bold("pressroom publish --all")}` : dim("ready to publish; nothing is queued")}\n`);
+      }
       break;
     }
 
     case "init": {
       const target = path.join(process.cwd(), "pressroom.config.mjs");
       if (fs.existsSync(target) && !f.force) {
-        console.error(`${target} already exists (pass --force to overwrite).`);
-        process.exit(1);
+        throw new UsageError(`${target} already exists. Edit it, or pass --force to replace it.`);
       }
       fs.writeFileSync(target, scaffoldConfig());
       console.log(`\n  ${paint("32", "✓")} wrote ${path.relative(process.cwd(), target)}`);
       console.log(`  ${dim("Set `siteRepo` to your static site's git checkout, then:")}  ${bold('pressroom new "Hello, world"')}\n`);
       break;
     }
-
-    case "help":
-    case "--help":
-    case "-h":
-    default:
-      printHelp();
   }
 }
 
 /* ── result reporting ────────────────────────────────────────────────────── */
 
+function reportFailure(r) {
+  console.error(`\n  ${paint("31", "✗")} ${r.slug ? bold(r.slug) + ": " : ""}${r.message || r.reason}`);
+  if (r.detail) console.error(`\n${dim(indent(r.detail))}`);
+  console.error("");
+}
+
 function reportPublish(r, { dryRun }) {
+  if (!r.ok) return reportFailure(r);
   if (dryRun) {
     console.log(`\n  ${dim(`— dry run: ${r.relPath || r.slug} — nothing written —`)}\n`);
     console.log(r.content || "");
-    return;
-  }
-  if (!r.ok) {
-    console.error(`\n  ${paint("31", "✗")} ${r.slug || "publish"} — ${r.reason}\n`);
     return;
   }
   if (r.unchanged) { console.log(`\n  ${dim("○")} ${r.slug} — already up to date (no commit)\n`); return; }
@@ -203,17 +259,29 @@ function reportPublish(r, { dryRun }) {
 }
 
 function reportDrain(r, { dryRun }) {
+  if (!r.considered) {
+    console.log(`\n  ${dim("○")} Nothing to publish: no post is ready or published. Set a post's status to ready first.\n`);
+    return;
+  }
+  if (!r.results.length && !r.ok) {
+    console.error(`\n  ${paint("31", "✗")} ${r.message}\n`);
+    return;
+  }
   if (dryRun) {
-    console.log(`\n  ${dim(`— dry run: ${r.considered} post(s) —`)}`);
-    for (const p of r.results) console.log(`  ${dim("·")} ${p.slug} → ${p.relPath}`);
+    console.log(`\n  ${dim(`— dry run: ${r.considered} post(s), nothing written —`)}`);
+    for (const p of r.results) {
+      console.log(p.ok ? `  ${dim("·")} ${p.slug} → ${p.relPath}` : `  ${paint("31", "✗")} ${p.slug}: ${p.message || p.reason}`);
+    }
     console.log("");
     return;
   }
-  console.log(`\n  ${r.ok ? paint("32", "✓") : paint("31", "✗")} drain: ${r.published}/${r.considered} post(s) committed`);
+  console.log(`\n  ${r.ok ? paint("32", "✓") : paint("31", "✗")} published ${r.published} of ${r.considered} post(s)${r.ok ? "" : `: ${r.message}`}`);
   for (const p of r.results) {
-    if (!p.ok) console.log(`  ${paint("31", "✗")} ${p.slug} — ${p.reason}`);
-    else if (p.unchanged) console.log(`  ${dim("○ " + p.slug + " — up to date")}`);
-    else console.log(`  ${paint("32", "✓")} ${p.slug} — ${p.retried ? "pushed the earlier commit" : p.pushed ? "pushed" : "committed"}`);
+    if (!p.ok) {
+      console.log(`  ${paint("31", "✗")} ${p.slug}: ${p.message || p.reason}`);
+      if (p.detail) console.log(dim(indent(p.detail, "      ")));
+    } else if (p.unchanged) console.log(`  ${dim("○ " + p.slug + " — up to date")}`);
+    else console.log(`  ${paint("32", "✓")} ${p.slug} — ${p.retried ? "pushed the earlier commit" : p.pushed ? "committed + pushed" : "committed"}`);
   }
   console.log("");
 }
@@ -231,14 +299,22 @@ export default {
   // (env: PRESSROOM_SITE_REPO · flag: --site-repo)
   siteRepo: "/absolute/path/to/your-site",
 
-  // Where posts land inside the site repo (the site's MDX content directory).
+  // Where posts land inside the site repo (the site's content folder).
+  // The Astro blog template: "src/content/blog".
   contentDir: "content/posts",
 
   // The branch your site deploys from — what publish commits + pushes to.
   branch: "main",
 
-  // Default byline for new posts and the fallback publish author. Left unset,
-  // pressroom uses your \`git config user.name\`; with neither, posts carry no author.
+  // The frontmatter key names your site reads, where they differ from pressroom's
+  // (title, description, date, tags, author). The Astro blog template reads pubDate:
+  // fields: { date: "pubDate" },
+
+  // The extension of a post new to the site: ".mdx", or ".md" for a Markdown-only site.
+  // extension: ".mdx",
+
+  // Default byline for new posts. Left unset, pressroom uses your
+  // \`git config user.name\`; with neither, posts carry no author.
   // defaultAuthor: "Your Name",
 
   // More bylines the viewer offers in its Author menu.
@@ -251,32 +327,42 @@ export default {
 }
 
 function printHelp() {
-  console.log(`pressroom — the local pressroom for your blog.
+  console.log(`pressroom ${version()} — the local pressroom for your blog.
 
-Draft posts as MDX on your machine, preview them in a viewer, and publish each one
-as a scoped git commit into your static site's repo with one command.
+Write posts as files on your machine, preview them in a viewer, and publish each one
+as a git commit to your static site's repo that contains only that post's file.
 
-  pressroom new <title>        scaffold a slugged draft .mdx in your posts dir
-  pressroom list               every post + its status (draft · ready · published)
+  pressroom init               write a pressroom.config.mjs here
+      --force                  replace an existing one
+  pressroom new <title>        write a draft <slug>.mdx in your posts folder
+  pressroom list               every post with its status, date, title and slug
 
-  pressroom publish <slug>     serialize → write into the site repo → scoped commit → push
-  pressroom publish --all      publish every "ready" post (idempotent; skips unchanged)
-      --dry-run                print the would-be MDX; write nothing, touch no git
-      --no-push                commit but don't push (local verification)
+  pressroom publish <slug>     write the post into the site repo, commit that file, push
+  pressroom publish --all      publish every ready post, and every published one that changed
+      --dry-run                print the file it would write; touch nothing
+      --no-push                commit without pushing
 
-  pressroom import --from=<dir>  pull existing site .mdx into your workspace (idempotent)
-                                 (default source: <siteRepo>/<contentDir>)
+  pressroom import             copy the site's .mdx and .md posts into your posts folder
+      --from=<folder>          read them from another folder
 
-  pressroom serve              host the viewer (preview · edit · publish)
-      --port=N                 default 4640 (also honors $PORT; auto-advances if busy)
-  pressroom open               serve + open the viewer in your browser
+  pressroom open               start the viewer and open it in your browser
+  pressroom serve              start the viewer
+      --port=N                 default 4640, or $PORT; the next free port if it's busy
 
-  pressroom doctor             config, site repo reachability, content dir, drafts pending
-  pressroom init               scaffold a pressroom.config.mjs
+  pressroom doctor             check git, the config, the site repo and the content folder
 
-Config: pressroom.config.{mjs,js,json}. Posts live in ./posts (gitignore or commit
-them — your call). Publishing only ever stages the single file it wrote — never
-git add -A, never a force-push. Zero runtime dependencies.`);
+  Every command but init also takes --site-repo=, --posts-dir=, --content-dir=,
+  --branch= and --author= to override the config for one run.
+
+Config: pressroom.config.mjs (or .js, .cjs, .json), found in this folder or above.
+Publishing stages only the file it wrote and never force-pushes.`);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  if (e instanceof ConfigError || e instanceof UsageError) {
+    console.error(`pressroom: ${e.message}`);
+  } else {
+    console.error(e);
+  }
+  process.exit(1);
+});

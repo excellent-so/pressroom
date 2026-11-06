@@ -10,16 +10,17 @@ import fs from "node:fs";
 import os from "node:os";
 import http from "node:http";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { execFileSync, spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { serializePostToMdx } from "../src/serialize.mjs";
-import { parseMdxFrontmatter } from "../src/frontmatter.mjs";
-import { slugify, newPost, listPosts, readPost, writePost, uniqueSlug, parsePostFile } from "../src/posts.mjs";
+import { parseMdxFrontmatter, normalizeDate, sameMeaning } from "../src/frontmatter.mjs";
+import { slugify, newPost, listPosts, readPost, writePost, uniqueSlug, parsePostFile, deriveExcerpt, isValidSlug } from "../src/posts.mjs";
 import { publishPost, publishReady } from "../src/publish.mjs";
 import { importPostsFromSite } from "../src/import.mjs";
 import { loadConfig, gitUserName } from "../src/config.mjs";
 import { serve } from "../src/serve.mjs";
+import { today } from "../src/lib.mjs";
 
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BIN = path.join(PKG_ROOT, "bin", "pressroom.mjs");
@@ -63,6 +64,23 @@ function initSiteRepo(dir, { remote } = {}) {
   }
   return dir;
 }
+/** The Astro blog template's first post, as `npm create astro -- --template blog` writes it. */
+const ASTRO_POST = [
+  "---", "title: 'Using MDX'", "description: 'Lorem ipsum dolor sit amet'", "pubDate: 'Jun 01 2024'",
+  "heroImage: '../../assets/blog-placeholder-5.jpg'", "---", "",
+  "import HeaderLink from '../../components/HeaderLink.astro';", "", "## Why MDX?", "", "Body text.", "",
+].join("\n");
+/** A site repo whose content folder is the Astro template's, with one committed post. */
+function astroSite(root, files = { "using-mdx.mdx": ASTRO_POST }) {
+  const site = initSiteRepo(path.join(root, "site"));
+  const cdir = path.join(site, "src", "content", "blog");
+  fs.mkdirSync(cdir, { recursive: true });
+  fs.writeFileSync(path.join(cdir, ".gitkeep"), "");
+  for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(cdir, name), text);
+  git(["add", "src"], site);
+  git(["commit", "-q", "-m", "the template's posts"], site);
+  return { site, cdir };
+}
 function commitCount(dir) { return Number(git(["rev-list", "--count", "HEAD"], dir)); }
 function headSha(dir) { return git(["rev-parse", "HEAD"], dir); }
 function filesInHead(dir) {
@@ -101,6 +119,11 @@ function req(port, method, pathname, { body, origin } = {}) {
     if (payload) r.write(payload);
     r.end();
   });
+}
+
+/** Run the CLI; returns { status, stdout, stderr }. */
+function cli(args, cwd, env = {}) {
+  return spawnSync("node", [BIN, ...args], { cwd, encoding: "utf8", env: { ...process.env, ...env } });
 }
 
 /** Build a resolved config via the real loader (exercises config.mjs too). */
@@ -245,7 +268,7 @@ section("slugging");
 await t("slugify lowercases, strips punctuation, collapses dashes", () => {
   assert.equal(slugify("Hello, World!"), "hello-world");
   assert.equal(slugify("  Why Linear is *so* fast?  "), "why-linear-is-so-fast");
-  assert.equal(slugify("Café — 2026 Review"), "caf-2026-review");
+  assert.equal(slugify("Café — 2026 Review"), "cafe-2026-review"); // accents dropped, not the letter
   assert.equal(slugify("!!!"), "post"); // empty → the "post" fallback
   assert.equal(slugify("a".repeat(200)).length, 80); // clamped to 80
 });
@@ -512,6 +535,8 @@ await t("full round-trip: import → publish preserves the post's data + then st
     'date: "2026-03-03"', "tags:", '  - "Meta"', 'author: "Priya Shah"', "---", "", "Content stays stable.", "",
   ].join("\n");
   fs.writeFileSync(path.join(cdir, "round-trip.mdx"), normalized);
+  git(["add", "content/posts/round-trip.mdx"], site);
+  git(["commit", "-q", "-m", "the site's post"], site);
   const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, push: false });
   importPostsFromSite(config);
   const r = publishPost(config, "round-trip");
@@ -524,9 +549,13 @@ await t("full round-trip: import → publish preserves the post's data + then st
     "---", "title: Loose Quotes", "description: Unquoted in the source",
     "date: 2026-04-04", "tags:", "  - Meta", "author: Sam Rivera", "---", "", "Stays stable after the first pass.", "",
   ].join("\n"));
+  git(["add", "content/posts/loose.mdx"], site);
+  git(["commit", "-q", "-m", "another site post"], site);
   importPostsFromSite(config);
+  const commits = commitCount(site);
   const first = publishPost(config, "loose");
-  assert.ok(first.ok, "first publish of an unquoted source succeeds");
+  assert.ok(first.ok && first.unchanged, "the same data in other quoting is already published");
+  assert.equal(commitCount(site), commits, "so no commit");
   const emitted = parseMdxFrontmatter(fs.readFileSync(path.join(cdir, "loose.mdx"), "utf8"));
   assert.equal(emitted.data.title, "Loose Quotes");
   assert.equal(emitted.data.description, "Unquoted in the source");
@@ -630,8 +659,11 @@ await t("doctor says when the byline comes from git config user.name", async () 
     const root = mkTmp("doctor");
     git(["init", "-q", "."], root);
     git(["config", "user.name", "Grace Hopper"], root);
-    const out = execFileSync("node", [BIN, "doctor"], { encoding: "utf8", cwd: root, env: { ...process.env } });
-    assert.match(out, /author:\s+Grace Hopper\s+\(from git config user\.name\)/);
+    // No site repo is set, so doctor reports that and exits 1; the byline line is still there.
+    const r = spawnSync("node", [BIN, "doctor"], { encoding: "utf8", cwd: root, env: { ...process.env } });
+    assert.match(r.stdout, /author:\s+Grace Hopper\s+\(from git config user\.name\)/);
+    assert.equal(r.status, 1, "doctor exits 1 while publishing can't work");
+    assert.match(r.stdout, /No site repo is set/);
   });
 });
 
@@ -687,6 +719,39 @@ await t("POST /api/config connects a throwaway git repo, persists the config, go
     assert.ok(pub.body.ok && pub.body.result.ok && pub.body.result.committed, "committed into the site");
     assert.equal(commitCount(site), before + 1, "exactly one new commit");
     assert.deepEqual(filesInHead(site), ["content/posts/" + slug + ".mdx"], "scoped one-file commit");
+  } finally { server.close(); }
+});
+await t("connecting from the viewer keeps the config's fields and extension", async () => {
+  const root = mkTmp("srvfields");
+  const site = initSiteRepo(path.join(root, "site"));
+  const configFile = path.join(root, "pressroom.config.mjs");
+  fs.writeFileSync(configFile, 'export default { fields: { date: "pubDate" }, extension: ".md" };\n');
+  const { config } = await loadConfig({ cwd: root });
+  const { server, port } = await startServer(config, { root, configFile });
+  try {
+    assert.ok((await req(port, "POST", "/api/config", { body: { siteRepo: site, push: false } })).body.ok);
+    // A fresh import (this process cached the file it loaded above).
+    const written = (await import(`${pathToFileURL(configFile).href}?after-connect`)).default;
+    assert.equal(written.siteRepo, site);
+    assert.deepEqual(written.fields, { date: "pubDate" });
+    assert.equal(written.extension, ".md");
+  } finally { server.close(); }
+});
+await t("connecting an Astro-shaped site picks up its pubDate key", async () => {
+  const root = mkTmp("srvastro");
+  const { site } = astroSite(root);
+  const configFile = path.join(root, "pressroom.config.mjs");
+  const config = await cfg(root, { postsDir: path.join(root, "posts") });
+  const { server, port } = await startServer(config, { root, configFile });
+  try {
+    const check = await req(port, "POST", "/api/config", { body: { siteRepo: site, contentDir: "src/content/blog", check: true } });
+    assert.equal(check.body.connection.dateField, "pubDate", "the check shows it");
+    assert.ok((await req(port, "POST", "/api/config", { body: { siteRepo: site, contentDir: "src/content/blog", push: false } })).body.ok);
+    assert.match(fs.readFileSync(configFile, "utf8"), /^\s*fields: \{"date":"pubDate"\},$/m, "and the config file keeps it");
+    newPost(config, { title: "Via The Viewer", status: "ready" });
+    const pub = await req(port, "POST", "/api/publish/via-the-viewer", { body: {} });
+    assert.ok(pub.body.result.ok, pub.body.result.message);
+    assert.match(pub.body.result.content, /^pubDate: "\d{4}-\d{2}-\d{2}"$/m);
   } finally { server.close(); }
 });
 await t("POST /api/config at a non-git dir fails 400 and does NOT enable publishing", async () => {
@@ -855,8 +920,322 @@ await t("MDX (imports, JSX, HTML tags) is shown as labelled code, never run", ()
   assert.doesNotMatch(html, /<Chart|<div class="x">/);
   assert.match(html, /<p>Text\.<\/p>/);
 });
+await t("an image on the site is named, not requested; a full URL loads", () => {
+  const html = renderMarkdown("![Hero](../../assets/hero.jpg)\n\n![Logo](https://example.com/logo.png)");
+  assert.doesNotMatch(html, /<img[^>]*assets\/hero\.jpg/, "no request the viewer's server would 404");
+  assert.match(html, /Image on your site<\/span> <code>\.\.\/\.\.\/assets\/hero\.jpg<\/code> Hero/);
+  assert.match(html, /<img alt="Logo" src="https:\/\/example\.com\/logo\.png">/);
+});
 await t("an autolink at the start of a line is not mistaken for JSX", () => {
   assert.doesNotMatch(renderMarkdown("<https://example.com> is the site."), /MDX, shown as code/);
+});
+
+
+/* ── 7. real sites: the Astro blog template's shape, .md posts, refusals ─── */
+section("site shapes — fields, .md posts, extra keys");
+await t("fields renames the keys publish writes (date → pubDate for Astro)", async () => {
+  const root = mkTmp("fields");
+  const { site, cdir } = astroSite(root, {});
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, contentDir: "src/content/blog", push: false, fields: { date: "pubDate" } });
+  newPost(config, { title: "Hello Astro", status: "ready", body: "First words of the post.\n" });
+  const r = publishPost(config, "hello-astro");
+  assert.ok(r.ok && r.committed, r.message);
+  const { data } = parseMdxFrontmatter(fs.readFileSync(path.join(cdir, "hello-astro.mdx"), "utf8"));
+  assert.match(data.pubDate, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(data.date, undefined, "no date key the site doesn't read");
+  assert.equal(data.description, "First words of the post.", "an empty excerpt publishes the start of the body");
+  // A post the site already has with no description doesn't get one invented.
+  fs.writeFileSync(path.join(cdir, "bare.mdx"), '---\ntitle: "Bare"\npubDate: "2024-01-02"\n---\n\nNo description here.\n');
+  git(["add", "src"], site); git(["commit", "-q", "-m", "bare"], site);
+  importPostsFromSite(config);
+  assert.ok(publishPost(config, "bare").unchanged, "no description added, so no commit");
+});
+await t("fields is checked: an unknown key or a bad name is a ConfigError", async () => {
+  const root = mkTmp("fieldsbad");
+  await assert.rejects(cfg(root, { fields: { published: "pubDate" } }), /fields\.published .* isn't one pressroom writes/);
+  await assert.rejects(cfg(root, { fields: { date: "pub date" } }), /must be a frontmatter key name/);
+  await assert.rejects(cfg(root, { fields: { date: "title" } }), /same name/);
+  await assert.rejects(cfg(root, { extension: ".txt" }), /must be "\.mdx" or "\.md"/);
+});
+await t("import → publish of an unchanged Astro template post makes no commit", async () => {
+  const root = mkTmp("astroidem");
+  const { site, cdir } = astroSite(root);
+  const config = await cfg(root, {
+    postsDir: path.join(root, "posts"), siteRepo: site, contentDir: "src/content/blog",
+    push: false, fields: { date: "pubDate" }, defaultAuthor: "Ada Lovelace",
+  });
+  importPostsFromSite(config);
+  const local = readPost(config, "using-mdx");
+  assert.equal(local.date, "2024-06-01", "the site's 'Jun 01 2024' is read as its day");
+  assert.equal(local.excerpt, "Lorem ipsum dolor sit amet");
+  assert.equal(local.extra.heroImage, "../../assets/blog-placeholder-5.jpg", "heroImage rides along");
+  const before = commitCount(site);
+  const r = publishPost(config, "using-mdx");
+  assert.ok(r.ok && r.unchanged, r.message || "unchanged");
+  assert.equal(commitCount(site), before, "no commit");
+  assert.equal(fs.readFileSync(path.join(cdir, "using-mdx.mdx"), "utf8"), ASTRO_POST, "the site's file is untouched");
+  // An edit does publish, and keeps the site's date text, heroImage and no invented byline.
+  writePost(config, { ...readPost(config, "using-mdx"), body: local.body + "\n\nA new line." });
+  const r2 = publishPost(config, "using-mdx");
+  assert.ok(r2.ok && r2.committed, r2.message);
+  const { data, content } = parseMdxFrontmatter(fs.readFileSync(path.join(cdir, "using-mdx.mdx"), "utf8"));
+  assert.equal(data.pubDate, "Jun 01 2024");
+  assert.equal(data.heroImage, "../../assets/blog-placeholder-5.jpg");
+  assert.equal(data.author, undefined, "the default byline isn't added to a post the site already has");
+  assert.match(content, /A new line\.$/);
+});
+await t("import reads .md posts, and publish writes back to the site's .md file", async () => {
+  const root = mkTmp("mdposts");
+  const md = ASTRO_POST.replace("title: 'Using MDX'", "title: 'First post'");
+  const { site, cdir } = astroSite(root, { "first-post.md": md, "notes.txt": "not a post" });
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, contentDir: "src/content/blog", push: false, fields: { date: "pubDate" } });
+  const r = importPostsFromSite(config);
+  assert.deepEqual(r.slugs, ["first-post"]);
+  writePost(config, { ...readPost(config, "first-post"), title: "First post, edited" });
+  const p = publishPost(config, "first-post");
+  assert.ok(p.ok && p.committed, p.message);
+  assert.equal(p.relPath, "src/content/blog/first-post.md");
+  assert.deepEqual(filesInHead(site), ["src/content/blog/first-post.md"]);
+  assert.equal(fs.existsSync(path.join(cdir, "first-post.mdx")), false, "no second copy as .mdx");
+});
+await t("a post with frontmatter that isn't YAML is left out of import and never overwritten", async () => {
+  const root = mkTmp("jsfm");
+  const jsPost = '---js\nconst title = "A fifth post";\nconst draft = true;\n---\nThis is a draft post\n';
+  const { site, cdir } = astroSite(root, { "fifthpost.md": jsPost, "toml.md": '+++\ntitle = "T"\n+++\nBody\n' });
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, contentDir: "src/content/blog", push: false });
+  const r = importPostsFromSite(config);
+  assert.deepEqual(r.slugs, []);
+  assert.deepEqual(r.skipped, ["fifthpost.md", "toml.md"]);
+  // A local post that happens to share the slug still can't replace it.
+  newPost(config, { title: "fifthpost", status: "ready" });
+  const p = publishPost(config, "fifthpost");
+  assert.equal(p.reason, "site-copy-unreadable");
+  assert.equal(fs.readFileSync(path.join(cdir, "fifthpost.md"), "utf8"), jsPost);
+});
+await t("a post with values over several lines is left out of import, and a change to it is refused", async () => {
+  const root = mkTmp("nested");
+  const nextPost = '---\ntitle: "Dynamic Routing"\ndate: "2020-03-16T05:35:07.322Z"\nauthor:\n  name: Tim Neutkens\n  picture: "/assets/blog/authors/tim.jpeg"\n---\n\nBody.\n';
+  const { site, cdir } = astroSite(root, { "dynamic-routing.md": nextPost });
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, contentDir: "src/content/blog", push: false });
+  assert.deepEqual(importPostsFromSite(config).skipped, ["dynamic-routing.md"]);
+  assert.deepEqual(parseMdxFrontmatter(nextPost).nested, ["author"]);
+  writePost(config, { ...parsePostFile(nextPost, "dynamic-routing"), status: "published", date: "2020-03-16", body: "Body." });
+  const same = publishPost(config, "dynamic-routing");
+  assert.ok(same.ok && same.unchanged, "unchanged is fine: nothing is written");
+  writePost(config, { ...readPost(config, "dynamic-routing"), body: "Changed." });
+  assert.equal(publishPost(config, "dynamic-routing").reason, "site-copy-unreadable");
+  assert.equal(fs.readFileSync(path.join(cdir, "dynamic-routing.md"), "utf8"), nextPost);
+});
+await t('extension: ".md" names a post new to the site', async () => {
+  const root = mkTmp("mdext");
+  const site = initSiteRepo(path.join(root, "site"));
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, push: false, extension: "md" });
+  newPost(config, { title: "Plain Markdown", status: "ready" });
+  const r = publishPost(config, "plain-markdown");
+  assert.equal(r.relPath, "content/posts/plain-markdown.md");
+});
+await t("a post's extra keys stay in its file and reach the site", async () => {
+  const root = mkTmp("extra");
+  const site = initSiteRepo(path.join(root, "site"));
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, push: false });
+  newPost(config, { title: "With Hero", status: "ready" });
+  const file = path.join(config.postsDir, "with-hero.mdx");
+  fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace("status: ready", 'status: ready\nheroImage: "../../assets/hero.jpg"'));
+  const r = publishPost(config, "with-hero");
+  assert.ok(r.ok && r.committed, r.message);
+  assert.match(fs.readFileSync(file, "utf8"), /^heroImage: "\.\.\/\.\.\/assets\/hero\.jpg"$/m, "kept when publish stamps the post");
+  assert.match(fs.readFileSync(path.join(site, "content", "posts", "with-hero.mdx"), "utf8"), /^heroImage: "\.\.\/\.\.\/assets\/hero\.jpg"$/m);
+});
+await t("doctor notices a site that keeps its dates under another key", async () => {
+  const root = mkTmp("doctordate");
+  const { site, cdir } = astroSite(root);
+  const r = cli(["doctor", `--site-repo=${site}`, "--content-dir=src/content/blog"], root);
+  assert.match(r.stdout, /keep their date in pubDate, but publish writes date\. Add fields: \{ date: "pubDate" \}/);
+  fs.writeFileSync(path.join(root, "pressroom.config.mjs"), 'export default { fields: { date: "pubDate" } };\n');
+  assert.doesNotMatch(cli(["doctor", `--site-repo=${site}`, "--content-dir=src/content/blog"], root).stdout, /keep their date in/);
+  assert.ok(fs.existsSync(cdir));
+});
+await t("dates, excerpts and the meaning of a file", () => {
+  assert.equal(normalizeDate("Jul 08 2022"), "2022-07-08");
+  assert.equal(normalizeDate("2026-03-03T23:30:00-08:00"), "2026-03-03");
+  assert.equal(normalizeDate("someday"), "someday");
+  assert.equal(deriveExcerpt("import X from './x';\n\n# Title\n\n```js\nx\n```\n\nThe **first** [real](http://x) words."), "The first real words.");
+  assert.equal(deriveExcerpt("word ".repeat(80)).length <= 161, true);
+  const a = parseMdxFrontmatter("---\ntitle: 'A'\ntags:\n  - x\n---\n\nBody\n");
+  const b = parseMdxFrontmatter('---\ntags:\n  - "x"\ntitle: "A"\nempty: ""\n---\nBody');
+  assert.ok(sameMeaning(a, b), "quoting, order and blank keys don't count");
+  assert.ok(!sameMeaning(a, parseMdxFrontmatter("---\ntitle: 'B'\n---\nBody")));
+});
+
+section("publish — refusals that leave the site as it was");
+await t("no remote named origin: refused before the commit, nothing written", async () => {
+  const root = mkTmp("noremote");
+  const site = initSiteRepo(path.join(root, "site"));
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, push: true });
+  newPost(config, { title: "Nowhere To Go", status: "ready" });
+  const before = commitCount(site);
+  const r = publishPost(config, "nowhere-to-go");
+  assert.equal(r.reason, "no-remote");
+  assert.match(r.message, /no remote named origin/);
+  assert.equal(commitCount(site), before);
+  assert.equal(fs.existsSync(path.join(site, "content", "posts", "nowhere-to-go.mdx")), false);
+  assert.equal(readPost(config, "nowhere-to-go").status, "ready", "not stamped published");
+  assert.ok(publishPost(config, "nowhere-to-go", { push: false }).committed, "--no-push still works");
+});
+await t("the site checked out on another branch: refused", async () => {
+  const root = mkTmp("branch");
+  const site = initSiteRepo(path.join(root, "site"), { remote: path.join(root, "origin.git") });
+  git(["checkout", "-q", "-b", "feature"], site);
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site });
+  newPost(config, { title: "Wrong Branch", status: "ready" });
+  const r = publishPost(config, "wrong-branch");
+  assert.equal(r.reason, "wrong-branch");
+  assert.match(r.message, /on branch feature, but publish pushes main/);
+  assert.equal(fs.existsSync(path.join(site, "content", "posts", "wrong-branch.mdx")), false);
+});
+await t("a hand edit to the site's copy that isn't committed is never overwritten", async () => {
+  const root = mkTmp("handedit");
+  const site = initSiteRepo(path.join(root, "site"));
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, push: false });
+  newPost(config, { title: "Hand Edited", status: "ready" });
+  publishPost(config, "hand-edited");
+  const target = path.join(site, "content", "posts", "hand-edited.mdx");
+  fs.appendFileSync(target, "\nA hand edit, not committed.\n");
+  writePost(config, { ...readPost(config, "hand-edited"), body: "New words." });
+  const r = publishPost(config, "hand-edited");
+  assert.equal(r.reason, "site-copy-changed");
+  assert.match(fs.readFileSync(target, "utf8"), /A hand edit, not committed\./, "the hand edit is still there");
+});
+await t("a file an earlier publish wrote but didn't commit is committed next time", async () => {
+  const root = mkTmp("staged");
+  const site = initSiteRepo(path.join(root, "site"));
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, push: false });
+  newPost(config, { title: "Half Done", status: "ready" });
+  const { content, relPath } = publishPost(config, "half-done", { dryRun: true });
+  fs.writeFileSync(path.join(site, relPath), content); // what publish writes before a commit fails
+  git(["add", relPath], site);
+  const r = publishPost(config, "half-done");
+  assert.ok(r.ok && r.committed, "committed, not reported up to date");
+  assert.deepEqual(filesInHead(site), [relPath]);
+});
+await t("git with no name or email: refused, so git can't invent one from the machine", async () => {
+  await withoutGlobalGitConfig(async () => {
+    const saved = { n: process.env.GIT_AUTHOR_NAME, e: process.env.GIT_AUTHOR_EMAIL, m: process.env.EMAIL };
+    delete process.env.GIT_AUTHOR_NAME; delete process.env.GIT_AUTHOR_EMAIL; delete process.env.EMAIL;
+    try {
+      const root = mkTmp("noident");
+      const site = initSiteRepo(path.join(root, "site"));
+      git(["config", "--unset", "user.name"], site);
+      git(["config", "--unset", "user.email"], site);
+      const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, push: false });
+      newPost(config, { title: "Anonymous", status: "ready" });
+      const r = publishPost(config, "anonymous");
+      assert.equal(r.reason, "no-git-identity");
+      assert.match(r.message, /git config --global user\.name/);
+      assert.equal(fs.existsSync(path.join(site, "content", "posts", "anonymous.mdx")), false, "nothing written");
+    } finally {
+      for (const [k, v] of [["GIT_AUTHOR_NAME", saved.n], ["GIT_AUTHOR_EMAIL", saved.e], ["EMAIL", saved.m]]) if (v !== undefined) process.env[k] = v;
+    }
+  });
+});
+await t("no git on PATH: one sentence, nothing written", async () => {
+  const root = mkTmp("nogit");
+  const site = initSiteRepo(path.join(root, "site"));
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site, push: false });
+  newPost(config, { title: "No Git", status: "ready" });
+  const savedPath = process.env.PATH;
+  process.env.PATH = path.join(root, "empty-bin");
+  let r;
+  try { r = publishPost(config, "no-git"); } finally { process.env.PATH = savedPath; }
+  assert.equal(r.reason, "git-missing");
+  assert.match(r.message, /git isn't installed/);
+  assert.equal(fs.existsSync(path.join(site, "content", "posts", "no-git.mdx")), false);
+});
+await t("a rejected push says to pull; the drain stops early on a site problem", async () => {
+  const root = mkTmp("rejected");
+  const remote = path.join(root, "origin.git");
+  const site = initSiteRepo(path.join(root, "site"), { remote });
+  const other = path.join(root, "other");
+  git(["clone", "-q", remote, other], root);
+  git(["-c", "user.name=Bee", "-c", "user.email=b@b.test", "commit", "-q", "--allow-empty", "-m", "theirs"], other);
+  git(["push", "-q", "origin", "main"], other);
+  const config = await cfg(root, { postsDir: path.join(root, "posts"), siteRepo: site });
+  newPost(config, { title: "Behind", status: "ready" });
+  const r = publishPost(config, "behind");
+  assert.equal(r.reason, "push-rejected");
+  assert.match(r.message, /git pull/);
+  assert.match(r.detail, /rejected/, "git's own words ride along");
+  git(["checkout", "-q", "--detach"], site);
+  const drain = publishReady(config);
+  assert.equal(drain.reason, "wrong-branch");
+  assert.equal(drain.results.length, 0, "one sentence, not one per post");
+});
+await t("a slug can't reach outside the posts folder", async () => {
+  const root = mkTmp("slugpath");
+  const config = await cfg(root, { postsDir: path.join(root, "posts") });
+  assert.equal(isValidSlug("../etc/passwd"), false);
+  assert.equal(isValidSlug("My Post!"), true);
+  assert.equal(readPost(config, "../x"), null);
+  assert.equal(publishPost(config, "../x").reason, "post-not-found");
+});
+await t("today is the local calendar day, not the UTC one", () => {
+  const evening = new Date(2026, 10, 5, 23, 30); // 11:30pm on Nov 5, local time
+  assert.equal(today(evening), "2026-11-05");
+});
+await t("frontmatter values stay on one line", () => {
+  const { fm } = parseFm(serializePostToMdx({ ...base, title: "Two\nlines" }));
+  assert.match(fm, /^title: "Two lines"$/m);
+});
+
+section("CLI — wrong input");
+await t("an unknown command or flag exits 1 with one sentence", async () => {
+  const root = mkTmp("cliwrong");
+  const unknown = cli(["publsh"], root);
+  assert.equal(unknown.status, 1);
+  assert.match(unknown.stderr, /^pressroom: publsh isn't a pressroom command/);
+  const typo = cli(["publish", "x", "--dryrun"], root);
+  assert.equal(typo.status, 1);
+  assert.match(typo.stderr, /doesn't take --dryrun/);
+  const port = cli(["serve", "--port=abc"], root);
+  assert.equal(port.status, 1);
+  assert.match(port.stderr, /whole number from 1 to 65535/);
+  assert.doesNotMatch(unknown.stderr + typo.stderr + port.stderr, /\n\s+at /, "no stack trace");
+});
+await t("--version prints the package version", async () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(PKG_ROOT, "package.json"), "utf8"));
+  assert.equal(cli(["--version"], mkTmp("ver")).stdout.trim(), pkg.version);
+});
+await t("a broken config file is one sentence, not a stack trace", async () => {
+  const root = mkTmp("badcfg");
+  fs.writeFileSync(path.join(root, "pressroom.config.mjs"), "export default { postsDir: ");
+  const r = cli(["list"], root);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /^pressroom: Couldn't load .*pressroom\.config\.mjs: .*Fix the file/);
+  assert.doesNotMatch(r.stderr, /\n\s+at /);
+});
+await t("a failed publish exits 1 and says what to do", async () => {
+  const root = mkTmp("clifail");
+  const r = cli(["publish", "missing-post"], root, { PRESSROOM_POSTS_DIR: path.join(root, "posts") });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /There's no post missing-post in .*pressroom list/);
+});
+await t("the viewer prints its address once when it skips busy ports", async () => {
+  const root = mkTmp("busy");
+  const blocker = http.createServer();
+  await new Promise((r) => blocker.listen(0, "127.0.0.1", r));
+  const busy = blocker.address().port;
+  const lines = [];
+  const log = console.log;
+  console.log = (...a) => lines.push(a.join(" "));
+  let server;
+  try {
+    server = serve(await cfg(root, { postsDir: path.join(root, "posts") }), { port: busy });
+    await new Promise((r) => server.once("listening", r));
+    await new Promise((r) => setTimeout(r, 50));
+  } finally { console.log = log; }
+  assert.equal(lines.filter((l) => l.includes("pressroom → ")).length, 1);
+  assert.notEqual(server.address().port, busy);
+  server.close(); blocker.close();
 });
 
 /* ── done ────────────────────────────────────────────────────────────────── */

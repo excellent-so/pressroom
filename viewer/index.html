@@ -714,6 +714,7 @@ html, body { height: 100%; }
 .pr-prose pre code { font-size: inherit; }
 .pr-prose hr { border: 0; border-top: 1px solid var(--color-border); }
 .pr-prose img { max-width: 100%; height: auto; border-radius: var(--radius-lg); }
+.pr-imgref { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 8px 12px; border: 1px dashed var(--color-border-strong); border-radius: var(--radius-lg); color: var(--color-subtle); font-size: var(--text-meta); }
 .pr-mdx { display: grid; justify-items: start; gap: 8px; }
 .pr-mdx pre { justify-self: stretch; }
 .pr-raw { margin: 0; padding: 16px 24px; color: var(--color-body); font-family: var(--font-mono); font-size: var(--text-meta); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -925,7 +926,11 @@ function renderMarkdown(src) {
     let s = esc(t);
     // code spans first (so their contents aren't touched by other rules)
     s = s.replace(/`([^`]+)`/g, (_, c) => `<code>${c}</code>`);
-    s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, a, u) => `<img alt="${a}" src="${u}">`);
+    // A full URL loads; a path on the site (/images/a.png, ../../assets/a.jpg) can't be
+    // found from here, so it's named instead of requested.
+    s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, a, u) => /^(https?:|data:image\/)/i.test(u)
+      ? `<img alt="${a}" src="${u}">`
+      : `<span class="pr-imgref"><span class="ex-badge ex-badge--neutral">Image on your site</span> <code>${u}</code>${a ? ` ${a}` : ""}</span>`);
     s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, txt, u) => {
       const safe = /^(https?:|\/|#|mailto:)/i.test(u) ? u : "#";
       return `<a href="${safe}" rel="noopener noreferrer nofollow" target="_blank">${txt}</a>`;
@@ -990,7 +995,7 @@ function renderMarkdown(src) {
 
 /* ── state ───────────────────────────────────────────────────────────────── */
 let CONFIG = null;
-let CONNECTION = null; // { configured, siteRepoExists, isGitRepo, contentDirExists, contentPostsDir }
+let CONNECTION = null; // { configured, siteRepoExists, isGitRepo, contentDirExists, contentPostsDir, dateField }
 let POSTS = [];
 let current = null; // the post as saved on disk
 let work = null;    // the post as edited here (current + unsaved edits)
@@ -1171,7 +1176,7 @@ function renderDetail() {
       authorOptions(p.author).map((a) => el("option", { value: a, text: a, selected: a === p.author }))));
   const editor = el("section", { class: "pr-pane", "aria-label": "Edit", hidden: v === "preview" || v === "raw" }, el("div", { class: "pr-editor" }, [
     field("Title", bind(el("input", { class: "ex-input", id: "fTitle", value: p.title }), "title")),
-    field("Excerpt", bind(el("input", { class: "ex-input", id: "fExcerpt", value: p.excerpt || "" }), "excerpt"), "Published as the site's description."),
+    field("Excerpt", bind(el("input", { class: "ex-input", id: "fExcerpt", value: p.excerpt || "" }), "excerpt"), "Published as the site's description. Left empty, publish uses the start of the body."),
     el("div", { class: "pr-grid2" }, [
       field("Status", bind(statusSel, "status")),
       field("Author", bind(authorSel, "author")),
@@ -1217,8 +1222,8 @@ function renderResult(r) {
     pre = r.content || "";
   } else if (!r.ok) {
     g = "cross"; title = "Publish failed"; cls += " ex-alert--danger"; role = "alert";
-    desc = "Nothing was pushed. " + (/^site-repo|^content-posts/.test(r.reason || "") ? "Check the site connection." : "Git said:");
-    pre = r.reason || "unknown error";
+    desc = r.message || "Nothing was published.";
+    pre = r.detail || (r.message ? null : r.reason || "unknown error");
   } else if (r.unchanged) {
     g = ""; title = "Already up to date";
     desc = "The site's copy of " + r.relPath + " already matches. No commit.";
@@ -1234,7 +1239,7 @@ function renderResult(r) {
     el("div", { class: "ex-alert__title", text: title }),
     el("button", { class: "ex-btn ex-btn--ghost ex-btn--sm pr-result__dismiss", type: "button", text: "Dismiss", onclick: () => { lastPublish = null; keepPlace(renderDetail); } }),
     el("div", { class: "ex-alert__desc", text: desc }),
-    pre !== null ? el("pre", { class: "ex-pre" }, document.createTextNode(pre)) : null,
+    pre != null ? el("pre", { class: "ex-pre" }, document.createTextNode(pre)) : null,
   ]);
 }
 
@@ -1246,6 +1251,10 @@ function rawFile(p) {
   if (p.author && p.author.trim()) fm.push("author: " + q(p.author));
   if (p.date && p.date.trim()) fm.push("date: " + q(p.date));
   if ((p.tags || []).length) { fm.push("tags:"); for (const t of p.tags) fm.push("  - " + q(t)); }
+  for (const [k, v] of Object.entries(p.extra || {})) {
+    if (Array.isArray(v)) { if (v.length) { fm.push(k + ":"); for (const x of v) fm.push("  - " + q(x)); } }
+    else if (String(v).trim()) fm.push(k + ": " + q(v));
+  }
   if (p.created) fm.push("created: " + q(p.created));
   if (p.updated) fm.push("updated: " + q(p.updated));
   fm.push("---", "", String(p.body || "").trim(), "");
@@ -1394,6 +1403,7 @@ function renderConnStatus(conn, message, kind) {
     box.append(row(conn.siteRepoExists, "Folder exists"));
     box.append(row(conn.isGitRepo, "Git repository (.git present)"));
     box.append(row(conn.contentDirExists, "Content folder", conn.contentPostsDir || ""));
+    if (conn.dateField && conn.dateField !== "date") box.append(row(true, "Publish date key", conn.dateField + ", as the site's posts use"));
   }
   const msg = $("#connMsg");
   msg.textContent = "";

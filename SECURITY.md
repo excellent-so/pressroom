@@ -26,8 +26,15 @@ and no network access beyond the `git push` you ask for. Areas most likely to ma
   **never force-pushes**: a push that can't fast-forward fails and returns git's own
   stderr; nothing on the remote is overwritten. Push credentials come from the site
   repo's own git remote — pressroom never handles or stores a token.
+- **Your site copy's own edits.** Publishing refuses to overwrite a site file that has
+  changes git hasn't staged, and checks the site repo (git present, the configured
+  branch checked out, an `origin` remote, a git name and email) before it writes
+  anything.
 - **The local viewer.** `pressroom serve` binds `127.0.0.1` only and guards mutating
-  routes (`POST /api/posts`, `POST /api/publish/*`) against cross-origin requests, so
-  a page in your browser can't drive local writes or a publish while the viewer runs.
+  routes (`POST /api/config`, `POST /api/posts`, `POST /api/posts/*`,
+  `POST /api/publish/*`) against cross-origin requests, so a page in your browser
+  can't drive local writes or a publish while the viewer runs.
 - **Config loading + path handling.** Config is imported from `pressroom.config.*` in
-  your project; treat a project's config as you would its code.
+  your project; treat a project's config as you would its code. A post's slug is a
+  file name: one with a `/`, a `\` or a leading `.` is refused, so a slug can't reach
+  outside the posts folder or the site's content folder.

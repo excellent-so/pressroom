@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 import { listPosts, readPost, writePost, newPost, STATUSES } from "./posts.mjs";
 import { publishPost } from "./publish.mjs";
 import { contentPostsDir } from "./config.mjs";
+import { siteDateKey } from "./import.mjs";
+import { SITE_FIELDS } from "./serialize.mjs";
 import { nowStamp, openBrowser, isGitRepo } from "./lib.mjs";
 
 const VIEWER_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "viewer");
@@ -71,6 +73,7 @@ function connectionState(cfg) {
     isGitRepo: Boolean(cfg.siteRepo && isGitRepo(cfg.siteRepo)),
     contentDirExists: Boolean(cdir && fs.existsSync(cdir)),
     contentPostsDir: cdir,
+    dateField: (cfg.fields || SITE_FIELDS).date,
   };
 }
 
@@ -85,6 +88,8 @@ function publicConfig(cfg) {
     authorFrom: cfg.authorFrom || null,
     authors: cfg.authors,
     push: cfg.push,
+    fields: cfg.fields,
+    extension: cfg.extension,
     statuses: STATUSES,
   };
 }
@@ -125,8 +130,21 @@ export default {
 
   // Push after committing? Override per run with --no-push.
   push: ${cfg.push ? "true" : "false"},
-};
+${siteShapeSource(cfg)}};
 `;
+}
+
+/** The `fields` and `extension` lines, only when they differ from the defaults. */
+function siteShapeSource(cfg) {
+  const renamed = Object.fromEntries(Object.entries(cfg.fields || {}).filter(([k, v]) => SITE_FIELDS[k] !== v));
+  let out = "";
+  if (Object.keys(renamed).length) {
+    out += `\n  // The frontmatter key names your site reads, where they differ from pressroom's.\n  fields: ${JSON.stringify(renamed)},\n`;
+  }
+  if (cfg.extension && cfg.extension !== ".mdx") {
+    out += `\n  // The extension of a post new to the site.\n  extension: ${JSON.stringify(cfg.extension)},\n`;
+  }
+  return out;
 }
 
 export function serve(config, { port = 4640, open = false, root = process.cwd(), configFile } = {}) {
@@ -179,7 +197,12 @@ export function serve(config, { port = 4640, open = false, root = process.cwd(),
           // one keeps where it came from (config, or git config user.name).
           const authorFrom = picked && picked !== curConfig.defaultAuthor ? "config" : curConfig.authorFrom;
           const push = patch.push === undefined ? curConfig.push : patch.push !== false;
-          const candidate = { ...curConfig, siteRepo: abs, contentDir, branch, defaultAuthor, authorFrom, push };
+          // A site whose posts keep their date under another key (the Astro blog
+          // template's pubDate) gets that key, unless the config already names one.
+          let fields = curConfig.fields || { ...SITE_FIELDS };
+          const dateKey = fields.date === SITE_FIELDS.date ? siteDateKey(contentPostsDir({ siteRepo: abs, contentDir })) : null;
+          if (dateKey && !Object.values(fields).includes(dateKey)) fields = { ...fields, date: dateKey };
+          const candidate = { ...curConfig, siteRepo: abs, contentDir, branch, defaultAuthor, authorFrom, push, fields };
 
           if (!fs.existsSync(abs)) {
             return json(res, 400, { ok: false, error: `No such directory: ${abs}`, connection: connectionState(candidate) });
@@ -290,15 +313,22 @@ export function serve(config, { port = 4640, open = false, root = process.cwd(),
   });
 
   let active = port;
-  const onListen = () => {
+  // One listener for the one successful bind: a busy port retries the next one,
+  // and the banner (and the browser) must not repeat for every retry.
+  server.once("listening", () => {
+    active = server.address().port;
     console.log(`\n  pressroom → http://127.0.0.1:${active}\n  (drafts in ${curConfig.postsDir} · Ctrl-C to stop)\n`);
     if (open) openBrowser(`http://127.0.0.1:${active}`);
-  };
+  });
   server.on("error", (e) => {
-    if (e.code === "EADDRINUSE" && active < port + 25) { active++; server.listen(active, "127.0.0.1", onListen); return; }
-    console.error(e.code === "EADDRINUSE" ? `\nNo free port found near ${port}.\n` : `server error: ${e.message}`);
+    if (e.code === "EADDRINUSE" && port !== 0 && active < port + 25 && active < 65535) { active++; server.listen(active, "127.0.0.1"); return; }
+    console.error(e.code === "EADDRINUSE"
+      ? `\npressroom: ports ${port} to ${active} are all in use. Stop what's using them, or pick another with --port=N.\n`
+      : e.code === "EACCES"
+        ? `\npressroom: you don't have permission to use port ${active}. Pick one above 1024 with --port=N.\n`
+        : `\npressroom: the viewer couldn't start: ${e.message}\n`);
     process.exit(1);
   });
-  server.listen(active, "127.0.0.1", onListen);
+  server.listen(active, "127.0.0.1");
   return server;
 }

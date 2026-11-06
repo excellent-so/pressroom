@@ -8,17 +8,26 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { parseMdxFrontmatter } from "./frontmatter.mjs";
-import { yamlStr } from "./serialize.mjs";
+import { parseMdxFrontmatter, asString, asTags } from "./frontmatter.mjs";
+import { yamlStr, emitKey } from "./serialize.mjs";
 import { today, nowStamp, ensureDir } from "./lib.mjs";
 
 export const STATUSES = ["draft", "ready", "published"];
 const STATUS_SET = new Set(STATUSES);
 
-/** Slugify a title: lowercase ASCII letters and digits joined by hyphens, at most 80 chars ("post" if none). */
+// The keys of a local post file that pressroom reads into fields. Any other key
+// (heroImage, a site-specific flag) is kept as written, in `extra`.
+const LOCAL_KEYS = new Set(["title", "status", "excerpt", "description", "author", "date", "tags", "created", "updated"]);
+
+/**
+ * Slugify a title: lowercase ASCII letters and digits joined by hyphens, at most 80
+ * chars ("post" if none). Accents are dropped first, so "Café" becomes "cafe".
+ */
 export function slugify(s) {
   return (
     String(s)
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -27,33 +36,44 @@ export function slugify(s) {
   );
 }
 
-/** First ~160 chars of the body, markup-stripped — the fallback excerpt. */
+/** Can `slug` name a post file? Any file name, but no folders and no leading dot. */
+export function isValidSlug(slug) {
+  const s = String(slug ?? "");
+  return Boolean(s) && !/[/\\\0]/.test(s) && !s.startsWith(".");
+}
+
+/**
+ * The fallback description: the body's first paragraph of prose (not a heading,
+ * code, an import, a component or an image), markup stripped, at most 160 chars.
+ */
 export function deriveExcerpt(body) {
-  return String(body)
-    .replace(/[#>*_`[\]()!-]/g, " ")
+  const strip = (s) => String(s)
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")          // images
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")       // links keep their text
+    .replace(/^\s*(?:[>#]+|[-*+]|\d+\.)\s+/gm, "")  // quote, heading and list markers
+    .replace(/[*_`~]/g, "")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 160);
-}
-
-function asString(v) {
-  if (Array.isArray(v)) return v[0] ?? "";
-  return v == null ? "" : String(v);
-}
-
-function asTags(v) {
-  if (Array.isArray(v)) return v.filter((t) => String(t).trim());
-  if (typeof v === "string" && v.trim()) return [v.trim()];
-  return [];
+    .trim();
+  const noCode = String(body).replace(/^(```|~~~)[\s\S]*?^\1[^\n]*$/gm, ""); // fenced code
+  const prose = noCode
+    .split(/\n\s*\n/)
+    .find((p) => !/^\s*(#|import\s|export\s|<|!\[|\||---|\*\*\*)/.test(p) && strip(p));
+  const text = strip(prose ?? noCode);
+  if (text.length <= 160) return text;
+  const cut = text.slice(0, 160);
+  return cut.slice(0, cut.lastIndexOf(" ") > 100 ? cut.lastIndexOf(" ") : 160).replace(/[\s,;:.]+$/, "") + "…";
 }
 
 /**
  * Parse a local `<slug>.mdx` file's raw text into a post object. The local
  * frontmatter shape is: status, title, excerpt, author, date, tags, created,
- * updated — plus the markdown body.
+ * updated — plus the markdown body. Other keys land in `extra`, written back as
+ * they are and published when the site's copy doesn't have them.
  */
 export function parsePostFile(raw, slug) {
   const { data, content } = parseMdxFrontmatter(raw);
+  const extra = {};
+  for (const [k, v] of Object.entries(data)) if (!LOCAL_KEYS.has(k)) extra[k] = v;
   const status = STATUS_SET.has(asString(data.status)) ? asString(data.status) : "draft";
   return {
     slug,
@@ -66,6 +86,7 @@ export function parsePostFile(raw, slug) {
     tags: asTags(data.tags),
     created: asString(data.created) || asString(data.date),
     updated: asString(data.updated),
+    extra,
     body: content,
   };
 }
@@ -83,6 +104,9 @@ export function serializePostFile(post) {
     lines.push("tags:");
     for (const t of tags) lines.push(`  - ${yamlStr(t.trim())}`);
   }
+  for (const [k, v] of Object.entries(post.extra || {})) {
+    if (!LOCAL_KEYS.has(k) && /^[A-Za-z_][\w-]*$/.test(k)) emitKey(k, v, lines);
+  }
   if (post.created && post.created.trim()) lines.push(`created: ${yamlStr(post.created.trim())}`);
   lines.push(`updated: ${yamlStr((post.updated && post.updated.trim()) || nowStamp())}`);
   lines.push("---");
@@ -99,11 +123,12 @@ export function postPath(config, slug) {
 
 /** Does a local post exist for this slug? */
 export function postExists(config, slug) {
-  return fs.existsSync(postPath(config, slug));
+  return isValidSlug(slug) && fs.existsSync(postPath(config, slug));
 }
 
 /** Read one post by slug, or null if it doesn't exist. */
 export function readPost(config, slug) {
+  if (!isValidSlug(slug)) return null;
   const file = postPath(config, slug);
   if (!fs.existsSync(file)) return null;
   return parsePostFile(fs.readFileSync(file, "utf8"), slug);
@@ -162,7 +187,8 @@ export function newPost(config, { title, body, excerpt, author, status = "draft"
   const post = {
     slug,
     title: title.trim(),
-    excerpt: (excerpt ?? "").trim() || deriveExcerpt(bodyText),
+    // Left empty, publish describes the post with the start of its body as it is then.
+    excerpt: (excerpt ?? "").trim(),
     author: author ?? config.defaultAuthor ?? "",
     status: STATUS_SET.has(status) ? status : "draft",
     date: status === "published" ? stamp : "",

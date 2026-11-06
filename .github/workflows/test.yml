@@ -7,11 +7,17 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The lowest Node in package.json's engines, and the current LTS.
+        node: ["20", "22"]
+    name: node ${{ matrix.node }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: ${{ matrix.node }}
       - name: git identity (the suite creates throwaway repos)
         run: |
           git config --global user.email "ci@pressroom.local"
