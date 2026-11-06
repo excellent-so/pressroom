@@ -172,7 +172,7 @@ npm run test:standalone   # the CLI in a fresh HOME, a reduced PATH and a temp g
 
 The viewer is one HTML file, `viewer/index.html`, built on `@excellent-so/kit` (MIT).
 The kit's CSS sits between two markers in its `<style>`; to update it, run
-`npx @excellent-so/kit sync viewer/index.html --no-compat`.
+`npx @excellent-so/kit sync viewer/index.html --no-compat --fonts`.
 
 ## License
 

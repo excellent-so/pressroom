@@ -24,6 +24,7 @@ The first release.
   preview or the raw file beside it, Publish and Dry run with git's result, a new-post form, and a dialog
   that connects a site repo and saves it to the config. It listens on `127.0.0.1` only, port 4640 by default,
   and refuses writes from other sites' pages.
+- The viewer embeds Geist and Geist Mono, so it looks the same on every machine with no outside requests.
 - The viewer is built on `@excellent-so/kit` 0.2.1 (MIT): light by default whatever the OS says, a Dark
   button the browser remembers, statuses as ink-outline badges with a glyph, and red only for a failed
   publish. On a phone it is one column.

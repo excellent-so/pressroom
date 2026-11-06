@@ -41,7 +41,7 @@ The viewer's styles come from `@excellent-so/kit` (MIT), synced into `viewer/ind
 kit's tokens (`--color-*`) there. To update the kit's block:
 
 ```sh
-npx @excellent-so/kit sync viewer/index.html --no-compat
+npx @excellent-so/kit sync viewer/index.html --no-compat --fonts
 ```
 
 Keep pull requests focused: one change per pull request makes review faster.
