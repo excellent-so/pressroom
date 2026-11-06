@@ -1,0 +1,12 @@
+# Node
+node_modules/
+*.tgz
+.DS_Store
+
+# A local pressroom.config.mjs scaffolded for trying the tool out in-repo.
+# Remove this line if you keep a real config committed here.
+/pressroom.config.mjs
+
+# Local drafts scaffolded while dogfooding in-repo (your real posts live in your
+# own project, not here).
+/posts/

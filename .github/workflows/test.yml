@@ -1,0 +1,21 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: git identity (the suite creates throwaway repos)
+        run: |
+          git config --global user.email "ci@pressroom.local"
+          git config --global user.name "Pressroom CI"
+      - run: node test/run.mjs
+      - name: independence gate (fresh HOME, reduced PATH, local bare remote)
+        run: npm run test:standalone

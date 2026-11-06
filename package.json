@@ -1,0 +1,52 @@
+{
+  "name": "@excellent-so/pressroom",
+  "version": "0.1.0",
+  "description": "Write posts locally, preview them, and publish each one as a git commit that contains only that post's file. Zero dependencies.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Excellent",
+  "homepage": "https://github.com/excellent-so/pressroom#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/excellent-so/pressroom.git"
+  },
+  "keywords": [
+    "blog",
+    "mdx",
+    "static-site",
+    "publishing",
+    "cms",
+    "local-first",
+    "git",
+    "markdown",
+    "nextjs",
+    "content",
+    "dev-tools"
+  ],
+  "bin": {
+    "pressroom": "bin/pressroom.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "viewer/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "pressroom": "node bin/pressroom.mjs",
+    "test": "node test/run.mjs",
+    "test:standalone": "node scripts/test-standalone.mjs"
+  },
+  "//dependencies": "Zero runtime dependencies. Frontmatter is parsed and written by a small gray-matter-compatible pair (no YAML library); publishing runs the system `git`; the viewer is one HTML file (with the CSS of @excellent-so/kit, MIT, inlined) served by Node's built-in http. Nothing is downloaded at run time and nothing is sent anywhere but your own git remote.",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/excellent-so/pressroom/issues"
+  }
+}

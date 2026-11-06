@@ -1,0 +1,1449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pressroom</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%20width='16'%20height='16'%20fill='currentColor'%3E%3Cstyle%3Esvg{color:%230a0a0a}@media%20(prefers-color-scheme:dark){svg{color:%23f2f2f2}}%3C/style%3E%3Crect%20x='1'%20y='2'%20width='14'%20height='4'/%3E%3Crect%20x='1'%20y='8'%20width='6'%20height='2'/%3E%3Crect%20x='9'%20y='8'%20width='6'%20height='2'/%3E%3Crect%20x='1'%20y='12'%20width='6'%20height='2'/%3E%3Crect%20x='9'%20y='12'%20width='6'%20height='2'/%3E%3C/svg%3E" />
+<script>try{if(localStorage.getItem('ex-theme')==='dark')document.documentElement.classList.add('theme-dark')}catch(e){}</script>
+<style>
+/* The kit (@excellent-so/kit: tokens + parts), written by its sync command. Edit the kit, not this block:
+   npx @excellent-so/kit sync viewer/index.html --no-compat */
+/* excellent-kit:begin */
+/* @excellent-so/kit 0.2.1, MIT. Written by `excellent-kit sync`: edit the kit, not this block. */
+
+/* @excellent-so/kit: tokens.
+   Ink on white, amber for Verified only, proof red for Returned (and failed) only, zinc greys for everything
+   else, 4px corners on controls and 8px on surfaces. Light by default whatever the OS says; dark is opt-in
+   with `.theme-dark` (or `.dark`, or `data-theme="dark"`) on <html> or on any subtree. Density is one
+   attribute: `data-density="compact"`.
+
+   Names are `--color-*` and the like, so the same token means the same thing everywhere.
+   tokens.json is generated from this file (npm run tokens); the tests keep them in step. */
+
+:root,
+.theme-light,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Faces. Geist and Geist Mono ship with the kit (fonts.css, OFL); Newsreader is optional (OFL, Google
+     Fonts) and falls back to Georgia. Everything falls back to the system. */
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Newsreader", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Type, in rem so it follows the reader's font size. 12px is the floor. */
+  --text-2xs: 0.75rem;     /* 12: badges, table heads, captions */
+  --text-meta: 0.8125rem;  /* 13: meta lines, helper text */
+  --text-sm: 0.875rem;     /* 14: the app's body and table cells */
+  --text-ui: 0.9375rem;    /* 15: card copy, UI body outside the shell */
+  --text-base: 1rem;       /* 16: reading text */
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;      /* 24: a page title */
+  --text-display: 2.5rem;  /* 40: an empty page's headline (Newsreader) */
+
+  /* Space. One unit u = 8px; one line of body text b = 24px. Inside a component, multiples of u; between
+     blocks, the scale. */
+  --u: 0.5rem;
+  --s1: 0.5rem;   /* a label and its line */
+  --s2: 1rem;     /* a title and its meta */
+  --s3: 1.5rem;   /* a heading and its text; paragraphs */
+  --s4: 2rem;     /* text and the action under it */
+  --s5: 3rem;     /* a section's header and its content */
+  --s6: 4.5rem;   /* two large blocks */
+
+  /* Corners: controls and badges 4, inner panes 6, surfaces 8, rare large frames 12. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Control heights. 44px everywhere by default (touch targets); compact density below. */
+  --control-h: 2.75rem;
+  --control-h-sm: 2.5rem;
+  --control-h-xs: 2.25rem;
+
+  /* Surfaces */
+  --color-background: #FBFBFB;
+  --color-foreground: #0E0E0E;
+  --color-card: #FFFFFF;
+  --color-muted: #F4F4F5;
+  --color-border: #E4E4E7;
+  --color-border-strong: #D4D4D8;
+  --color-field: #8A8A93;       /* form-field edges only: at least 3:1 on the page */
+  --color-input: #FFFFFF;       /* a field's background */
+  --color-ring: #0E0E0E;        /* the focus ring */
+
+  /* Text, ink then zinc */
+  --color-strong: #0E0E0E;
+  --color-body: #3F3F46;
+  --color-subtle: #63636E;
+  --color-faint: #71717B;
+  --color-icon-faint: #9D9D9D;  /* decorative icons only, never text */
+
+  /* Action */
+  --color-primary: #0E0E0E;
+  --color-primary-foreground: #FFFFFF;
+  --color-primary-hover: #2B2B2B;
+  --color-selection: #EBEBEB;
+
+  /* The two marks. Amber is for Verified (and the dither, a tag, a Copied state) and nothing else; proof red
+     is for Returned and failed and nothing else. Text on amber is ink; text on red is white, in both themes. */
+  --color-verified: #FFBF00;
+  --color-on-verified: #0E0E0E;
+  --color-returned: #CE2E1C;
+  --color-on-returned: #FFFFFF;
+  --color-returned-ink: #B42318; /* red text on the page (a failed line), 4.5:1 or better */
+
+  /* Elevation is for things that float (menus, popovers, a floating frame), never for static cards. */
+  --shadow-ring: rgb(0 0 0 / 0.06);
+  --shadow-color: rgb(0 0 0 / 0.06);
+  --shadow-surface-1: 0 0 0 1px var(--shadow-ring);
+  --shadow-surface-2: 0 0 0 1px var(--shadow-ring), 0 1px 1px -0.5px var(--shadow-color);
+  --shadow-surface-3: 0 0 0 1px var(--shadow-ring), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color);
+  --shadow-surface-4: 0 0 0 1px var(--shadow-ring), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color);
+  --shadow-surface-5: 0 0 0 1px var(--shadow-ring), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color);
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 150ms;
+
+  /* Glyphs, drawn on a 2px grid, as masks in currentColor: the one arrow, the way back, a stepped check, a
+     cross. Use them with `mask: var(--glyph-check) center / contain no-repeat; background: currentColor`. */
+  --glyph-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 13 10'%3E%3Cpath d='M0 4h13v2H0zM7 0h2v2H7zM9 2h2v2H9zM9 6h2v2H9zM7 8h2v2H7z'/%3E%3C/svg%3E");
+  --glyph-arrow-back: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 13 10'%3E%3Cpath d='M0 4h13v2H0zM4 0h2v2H4zM2 2h2v2H2zM2 6h2v2H2zM4 8h2v2H4z'/%3E%3C/svg%3E");
+  --glyph-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10'%3E%3Cpath d='M0 4h2v2H0zM2 6h2v2H2zM4 8h2v2H4zM6 6h2v2H6zM8 4h2v2H8zM10 2h2v2h-2zM4 6h2v2H4z'/%3E%3C/svg%3E");
+  --glyph-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M0 0h2v2H0zM2 2h2v2H2zM4 4h2v2H4zM6 6h2v2H6zM8 8h2v2H8zM8 0h2v2H8zM6 2h2v2H6zM2 6h2v2H2zM0 8h2v2H0z'/%3E%3C/svg%3E");
+}
+
+.theme-dark,
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-background: #131316;
+  --color-foreground: #F0F0F2;
+  --color-card: #1A1A1E;
+  --color-muted: #202024;
+  --color-border: #2E2E33;
+  --color-border-strong: #3F3F46;
+  --color-field: #6B6B75;
+  --color-input: #1A1A1E;
+  --color-ring: #F0F0F2;
+
+  --color-strong: #F0F0F2;
+  --color-body: #C2C2C9;
+  --color-subtle: #A1A1AA;
+  --color-faint: #8A8A93;
+  --color-icon-faint: #5C5C66;
+
+  --color-primary: #F0F0F2;
+  --color-primary-foreground: #131316;
+  --color-primary-hover: #E2E2E6;
+  --color-selection: rgb(255 255 255 / 0.16);
+
+  --color-returned-ink: #F97066;
+
+  --shadow-ring: rgb(255 255 255 / 0.1);
+  --shadow-color: rgb(0 0 0 / 0.4);
+}
+
+/* Compact density (an admin console, a dense tool), on a mouse or trackpad only: touch keeps 44px. */
+@media (pointer: fine) {
+  [data-density="compact"] {
+    --control-h: 2.25rem;
+    --control-h-sm: 2rem;
+    --control-h-xs: 1.75rem;
+  }
+}
+
+/* @excellent-so/kit: components.
+   Plain CSS classes on the tokens (tokens.css), prefixed `ex-` so they sit beside a tool's own styles
+   without a clash. No framework and no build step: a page links tokens.css and kit.css (or inlines them with
+   `npx @excellent-so/kit sync`), and every part works in both themes and both densities.
+
+   The rules the parts keep:
+   - Amber is for Verified only, proof red for Returned or failed only. Every other state is an outline.
+   - A state never rests on colour alone: verdict and status badges carry a glyph.
+   - Buttons and fields have 4px corners and are 44px tall (36px in compact density, on a mouse).
+   - Surfaces are a 1px hairline and 8px corners, flat. Shadows are for things that float.
+   - One visible focus ring for everything a keyboard can reach. */
+
+/* --- Base (opt in: put `ex-page` on <body>, or use the parts inside your own page) --------------------- */
+
+/* Every kit part measures its border box, whatever the page around it does. */
+:where([class^="ex-"], [class*=" ex-"]),
+:where([class^="ex-"], [class*=" ex-"])::before,
+:where([class^="ex-"], [class*=" ex-"])::after { box-sizing: border-box; }
+/* The hidden attribute always hides a part, whatever display the part sets. */
+[hidden]:where([class^="ex-"], [class*=" ex-"]) { display: none !important; }
+
+.ex-page {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-body);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-wrap: break-word;
+}
+.ex-page ::selection { background: var(--color-selection); color: var(--color-strong); }
+/* The page's element rules weigh nothing (:where), so any kit class still sets its own margins and faces. */
+.ex-page :where(:focus-visible) { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+.ex-page :where(h1, h2, h3, h4) { margin: 0; color: var(--color-strong); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+.ex-page :where(p, ul, ol, dl, figure) { margin: 0; }
+.ex-page :where(code, kbd, pre) { font-family: var(--font-mono); }
+.ex-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ex-skip { position: fixed; top: 8px; left: 8px; z-index: 100; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--color-primary); color: var(--color-primary-foreground); transform: translateY(-200%); }
+.ex-skip:focus { transform: none; }
+
+/* --- Glyphs --------------------------------------------------------------------------------------- */
+
+.ex-glyph { display: inline-block; flex: none; width: 10px; height: 8px; background: currentColor; -webkit-mask: var(--glyph-check) center / contain no-repeat; mask: var(--glyph-check) center / contain no-repeat; }
+.ex-glyph--arrow { width: 13px; height: 10px; -webkit-mask-image: var(--glyph-arrow); mask-image: var(--glyph-arrow); }
+.ex-glyph--back { width: 13px; height: 10px; -webkit-mask-image: var(--glyph-arrow-back); mask-image: var(--glyph-arrow-back); }
+.ex-glyph--cross { width: 8px; height: 8px; -webkit-mask-image: var(--glyph-cross); mask-image: var(--glyph-cross); }
+.ex-glyph--open { width: 7px; height: 7px; background: none; box-shadow: inset 0 0 0 1.25px currentColor; -webkit-mask: none; mask: none; }
+
+/* --- Links ---------------------------------------------------------------------------------------- */
+
+.ex-link { color: var(--color-strong); font-weight: 500; text-decoration: underline; text-decoration-color: var(--color-border-strong); text-decoration-thickness: 1px; text-underline-offset: 0.3em; transition: text-decoration-color var(--dur-fast) var(--ease-out-expo); }
+.ex-link:hover { text-decoration-color: currentColor; }
+.ex-link--quiet { color: var(--color-subtle); font-weight: inherit; }
+.ex-link--quiet:hover { color: var(--color-strong); }
+/* The one arrow, on every "learn more" link and on links that leave the page. */
+.ex-link--arrow { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+.ex-link--arrow::after { content: ""; width: 13px; height: 10px; background: currentColor; -webkit-mask: var(--glyph-arrow) center / contain no-repeat; mask: var(--glyph-arrow) center / contain no-repeat; transition: transform var(--dur-fast) var(--ease-out-expo); }
+.ex-link--arrow:hover::after { transform: translateX(3px); }
+
+/* --- Buttons -------------------------------------------------------------------------------------- */
+
+.ex-btn {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--control-h);
+  padding: 0 16px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 550;
+  letter-spacing: 0.005em;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out-expo), border-color var(--dur-fast) var(--ease-out-expo), color var(--dur-fast) var(--ease-out-expo);
+}
+.ex-btn:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+.ex-btn:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+.ex-btn:disabled, .ex-btn[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
+.ex-btn--outline, .ex-btn--secondary { background: transparent; border-color: var(--color-border-strong); color: var(--color-strong); }
+.ex-btn--outline:hover, .ex-btn--secondary:hover { background: transparent; border-color: var(--color-strong); }
+.ex-btn--ghost { background: transparent; border-color: transparent; color: var(--color-body); }
+.ex-btn--ghost:hover { background: var(--color-muted); border-color: transparent; color: var(--color-strong); }
+.ex-btn--muted { background: var(--color-muted); border-color: transparent; color: var(--color-strong); }
+.ex-btn--muted:hover { background: var(--color-border); border-color: transparent; }
+.ex-btn--danger { background: var(--color-returned); border-color: var(--color-returned); color: var(--color-on-returned); }
+.ex-btn--danger:hover { background: color-mix(in srgb, var(--color-returned) 88%, #000); border-color: transparent; }
+.ex-btn--link { height: auto; min-height: 44px; padding: 0; border: 0; background: none; color: var(--color-strong); font-weight: 500; text-decoration: underline; text-decoration-color: var(--color-border-strong); text-underline-offset: 0.3em; }
+.ex-btn--link:hover { background: none; text-decoration-color: currentColor; }
+.ex-btn--sm { height: var(--control-h-sm); padding: 0 12px; gap: 6px; font-size: var(--text-meta); }
+.ex-btn--xs { height: 24px; padding: 0 8px; gap: 4px; font-size: var(--text-2xs); }
+.ex-btn--lg { height: 3.25rem; padding: 0 26px; font-size: var(--text-base); }
+.ex-btn--icon { width: var(--control-h); padding: 0; }
+.ex-btn--sm.ex-btn--icon { width: var(--control-h-sm); }
+/* Small controls keep a 44px target with an invisible hit area. */
+.ex-btn--sm::after, .ex-btn--xs::after { content: ""; position: absolute; inset: -10px 0; }
+/* A toggle that's on: the muted fill. A button that just copied: the kit's amber, for a moment. */
+.ex-btn[aria-pressed="true"]:not(.ex-btn--link) { background: var(--color-muted); border-color: var(--color-border-strong); color: var(--color-strong); }
+.ex-btn.is-copied { background: var(--color-verified); border-color: var(--color-verified); color: var(--color-on-verified); }
+.ex-btn .ex-glyph--arrow { transition: transform var(--dur-fast) var(--ease-out-expo); }
+.ex-btn:hover .ex-glyph--arrow { transform: translateX(3px); }
+
+/* A row of controls */
+.ex-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* --- Badges --------------------------------------------------------------------------------------- */
+/* 12px medium, sentence case, 20px tall, 4px corners. Verdicts and states carry a glyph (::before). */
+
+.ex-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+.ex-badge::before { display: none; content: ""; flex: none; width: 10px; height: 8px; background: currentColor; -webkit-mask: var(--glyph-check) center / contain no-repeat; mask: var(--glyph-check) center / contain no-repeat; }
+.ex-badge--outline, .ex-badge--info { background: transparent; border-color: var(--color-border-strong); color: var(--color-strong); }
+.ex-badge--neutral { background: color-mix(in srgb, var(--color-muted) 60%, transparent); border-color: var(--color-border); color: var(--color-subtle); }
+.ex-badge--count { padding: 0 4px; background: var(--color-muted); color: var(--color-subtle); font-variant-numeric: tabular-nums; }
+/* The verdicts */
+.ex-badge--verified { background: var(--color-verified); color: var(--color-on-verified); }
+.ex-badge--returned { background: var(--color-returned); color: var(--color-on-returned); }
+.ex-badge--verified::before, .ex-badge--returned::before, .ex-badge--danger::before, .ex-badge--success::before, .ex-badge--warning::before, .ex-badge--unchecked::before { display: block; }
+.ex-badge--returned::before { width: 10px; -webkit-mask-image: var(--glyph-arrow-back); mask-image: var(--glyph-arrow-back); }
+/* The states: broken in red with a cross; done as an ink outline with a check; not yet as an open square */
+.ex-badge--danger { background: var(--color-returned); color: var(--color-on-returned); }
+.ex-badge--danger::before { width: 8px; -webkit-mask-image: var(--glyph-cross); mask-image: var(--glyph-cross); }
+.ex-badge--success { background: transparent; border-color: var(--color-border-strong); color: var(--color-strong); }
+.ex-badge--warning, .ex-badge--unchecked { background: transparent; border-color: var(--color-border-strong); color: var(--color-body); }
+.ex-badge--warning::before, .ex-badge--unchecked::before { width: 7px; height: 7px; background: none; box-shadow: inset 0 0 0 1.25px currentColor; -webkit-mask: none; mask: none; }
+.ex-badge--unchecked { color: var(--color-subtle); }
+/* A label in caps, for a badge that is a mark rather than data. */
+.ex-badge--caps { height: 24px; padding: 0 10px; border-radius: 3px; font-family: var(--font-mono); font-size: var(--text-2xs); letter-spacing: 0.07em; text-transform: uppercase; }
+/* A tag: the kit's amber, for a small brand label (New, Beta). Never a state. */
+.ex-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: var(--radius-sm); background: var(--color-verified); color: var(--color-on-verified); font-family: var(--font-mono); font-size: var(--text-2xs); letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* --- Surfaces: card, alert, empty state -------------------------------------------------------------- */
+
+.ex-card { display: flex; flex-direction: column; gap: 24px; padding: 24px 0; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-card); color: var(--color-foreground); }
+.ex-card > * { padding-inline: 24px; }
+.ex-card__header { display: grid; gap: 8px; }
+.ex-card__header:has(.ex-card__action) { grid-template-columns: 1fr auto; }
+.ex-card__title { color: var(--color-strong); font-size: var(--text-base); font-weight: 600; line-height: 1.5rem; }
+.ex-card__desc { color: var(--color-subtle); font-size: var(--text-sm); line-height: 1.25rem; }
+.ex-card__action { grid-column: 2; grid-row: 1 / span 2; align-self: start; }
+.ex-card__footer { display: flex; align-items: center; gap: 8px; }
+.ex-card__media { display: block; width: 100%; margin-top: -24px; padding: 0 !important; overflow: hidden; border-bottom: 1px solid var(--color-border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--color-muted); }
+.ex-card__media > img, .ex-card__media > video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ex-card--tight .ex-card__media { margin-top: -16px; }
+.ex-card--tight { gap: 12px; padding: 16px 0; }
+.ex-card--tight > * { padding-inline: 16px; }
+/* A raised surface: something that floats (a menu, a popover, a frame over the page). */
+.ex-float { border-radius: var(--radius-lg); background: var(--color-card); box-shadow: var(--shadow-surface-4); }
+
+.ex-alert { display: grid; grid-template-columns: 0 1fr; align-items: start; row-gap: 2px; padding: 12px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-card); color: var(--color-foreground); font-size: var(--text-sm); }
+.ex-alert:has(> .ex-glyph, > svg) { grid-template-columns: 16px 1fr; column-gap: 12px; }
+.ex-alert > .ex-glyph, .ex-alert > svg { margin-top: 5px; }
+.ex-alert__title { grid-column: 2; font-weight: 500; letter-spacing: -0.005em; }
+.ex-alert__desc { grid-column: 2; color: var(--color-subtle); line-height: 1.25rem; }
+.ex-alert__close { grid-column: 3; grid-row: 1; margin: -6px -8px 0 8px; }
+.ex-alert:has(> .ex-alert__close) { grid-template-columns: 0 1fr auto; }
+.ex-alert:has(> .ex-glyph, > svg):has(> .ex-alert__close) { grid-template-columns: 16px 1fr auto; }
+.ex-alert--danger { border-color: color-mix(in srgb, var(--color-returned) 40%, var(--color-border)); color: var(--color-returned-ink); }
+.ex-alert--danger .ex-alert__desc { color: var(--color-returned-ink); opacity: 0.9; }
+
+.ex-empty { padding: 32px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-card); text-align: center; }
+.ex-empty--bare { padding: 12px 0; border: 0; background: none; }
+.ex-empty__title { color: var(--color-strong); font-size: var(--text-sm); font-weight: 500; line-height: 1.25rem; }
+.ex-empty__text { margin-top: 4px; color: var(--color-subtle); font-size: var(--text-sm); line-height: 1.25rem; }
+.ex-empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
+/* A whole page with nothing on it yet: the headline face. */
+.ex-empty--page { max-width: 36rem; margin-inline: auto; padding: 24px 0; border: 0; background: none; }
+.ex-empty--page .ex-empty__title { font-family: var(--font-heading); font-size: 2rem; font-weight: 400; line-height: 1.08; letter-spacing: -0.02em; text-wrap: balance; }
+.ex-empty--page .ex-empty__text { margin-top: 12px; font-size: var(--text-ui); line-height: 1.6; }
+.ex-empty--page .ex-empty__actions { margin-top: 28px; gap: 12px; }
+@media (min-width: 640px) { .ex-empty--page .ex-empty__title { font-size: var(--text-display); } }
+
+/* --- Heads: a page, a section, tabs ------------------------------------------------------------------ */
+
+.ex-page-header { display: flex; flex-direction: column; gap: 12px; }
+.ex-page-header__title { color: var(--color-strong); font-family: var(--font-sans); font-size: var(--text-2xl); font-weight: 600; line-height: 2rem; letter-spacing: -0.02em; }
+.ex-page-header__desc { margin-top: 4px; max-width: 72ch; color: var(--color-subtle); font-size: var(--text-sm); line-height: 1.25rem; }
+.ex-page-header__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+@media (min-width: 640px) { .ex-page-header { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 24px; } }
+
+.ex-section-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+.ex-section-header__title { display: flex; align-items: center; gap: 6px; color: var(--color-strong); font-size: var(--text-base); font-weight: 600; line-height: 1.5rem; }
+.ex-section-header__desc { margin-top: 2px; max-width: 80ch; color: var(--color-subtle); font-size: var(--text-meta); line-height: 1.25rem; }
+
+.ex-tabs { display: flex; gap: 2px; min-width: max-content; padding: 0 4px; border-bottom: 1px solid var(--color-border); }
+.ex-tabs-scroll { margin: 0 -4px; overflow-x: auto; overflow-y: hidden; }
+.ex-tab { display: inline-flex; align-items: center; gap: 6px; height: 36px; margin-bottom: -1px; padding: 0 10px; border: 0; border-bottom: 2px solid transparent; border-radius: var(--radius-md) var(--radius-md) 0 0; background: none; color: var(--color-subtle); font: inherit; font-size: var(--text-sm); text-decoration: none; cursor: pointer; transition: color var(--dur-fast), border-color var(--dur-fast); }
+.ex-tab:hover { border-bottom-color: var(--color-border-strong); color: var(--color-strong); }
+.ex-tab[aria-current="page"], .ex-tab[aria-selected="true"] { border-bottom-color: var(--color-strong); color: var(--color-strong); font-weight: 500; }
+.ex-tab:focus-visible { outline: none; background: var(--color-muted); }
+
+/* --- Numbers and facts ------------------------------------------------------------------------------ */
+
+.ex-metrics { --metric-min: 10rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(var(--metric-min), 100%), 1fr)); gap: 12px; }
+.ex-metric { min-width: 0; padding: 12px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-card); }
+.ex-metric__label { color: var(--color-subtle); font-size: var(--text-meta); font-weight: 500; line-height: 1.25rem; }
+.ex-metric__value { margin-top: 4px; color: var(--color-strong); font-size: var(--text-2xl); font-weight: 600; line-height: 2rem; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.ex-metric__detail { margin-top: 4px; color: var(--color-subtle); font-size: var(--text-2xs); line-height: 1rem; }
+
+.ex-details { --detail-label: 11rem; margin: 0; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-card); font-size: var(--text-sm); line-height: 1.25rem; }
+.ex-details > div { display: grid; gap: 2px; padding: 10px 16px; }
+.ex-details > div + div { border-top: 1px solid var(--color-border); }
+.ex-details dt { color: var(--color-subtle); }
+.ex-details dd { min-width: 0; margin: 0; color: var(--color-strong); overflow-wrap: anywhere; }
+@media (min-width: 640px) { .ex-details > div { grid-template-columns: var(--detail-label) minmax(0, 1fr); gap: 16px; } }
+[data-density="compact"] .ex-details > div { padding-block: 8px; }
+
+/* --- Tables --------------------------------------------------------------------------------------- */
+/* A bordered card, a tinted head band, a hairline under every row, numbers right-aligned in tabular
+   figures. Wrap the table in .ex-table-frame (and .ex-table-scroll for wide ones). */
+
+.ex-table-frame { overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-card); }
+.ex-table-scroll { position: relative; width: 100%; overflow-x: auto; }
+.ex-table { width: 100%; border-collapse: collapse; caption-side: bottom; font-size: var(--text-sm); line-height: 1.25rem; }
+.ex-table thead { background: color-mix(in srgb, var(--color-muted) 60%, transparent); }
+.ex-table th { height: 36px; padding: 0 12px; border-bottom: 1px solid var(--color-border); color: var(--color-subtle); font-size: var(--text-2xs); font-weight: 500; line-height: 1rem; text-align: left; white-space: nowrap; vertical-align: middle; }
+.ex-table td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); color: var(--color-body); vertical-align: middle; }
+.ex-table tbody tr:last-child td { border-bottom: 0; }
+.ex-table tbody tr { transition: background-color var(--dur-fast); }
+.ex-table tbody tr:hover { background: color-mix(in srgb, var(--color-muted) 50%, transparent); }
+.ex-table tr[aria-selected="true"] { background: var(--color-muted); }
+.ex-table .ex-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ex-table .ex-shrink { width: 1%; white-space: nowrap; }
+.ex-table th[aria-sort] { cursor: pointer; user-select: none; }
+.ex-table th[aria-sort="ascending"]::after { content: " \2191"; }
+.ex-table th[aria-sort="descending"]::after { content: " \2193"; }
+/* The first cell: a title, an optional meta line, and one clamped muted line (full text on hover). */
+.ex-cell-title { color: var(--color-strong); font-weight: 500; }
+.ex-cell-meta { color: var(--color-subtle); font-size: var(--text-meta); }
+.ex-cell-clamp { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; color: var(--color-subtle); font-size: var(--text-meta); overflow-wrap: anywhere; }
+.ex-cell-empty { color: var(--color-faint); }
+.ex-id { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--color-subtle); }
+
+/* --- Forms ---------------------------------------------------------------------------------------- */
+
+.ex-field { display: grid; align-content: start; gap: 6px; }
+.ex-label { color: var(--color-strong); font-size: var(--text-sm); font-weight: 500; line-height: 1.25rem; }
+.ex-label .ex-optional { color: var(--color-subtle); font-weight: 400; }
+.ex-hint { color: var(--color-subtle); font-size: var(--text-meta); line-height: 1.25rem; }
+.ex-error { color: var(--color-returned-ink); font-size: var(--text-meta); line-height: 1.25rem; }
+[data-density="compact"] .ex-label { font-size: var(--text-meta); line-height: 1rem; }
+[data-density="compact"] .ex-hint, [data-density="compact"] .ex-error { font-size: var(--text-2xs); line-height: 1rem; }
+
+.ex-input, .ex-select, .ex-textarea {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-h);
+  padding: 4px 12px;
+  border: 1px solid var(--color-field);
+  border-radius: var(--radius-sm);
+  background: var(--color-input);
+  color: var(--color-strong);
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 450;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.ex-input::placeholder, .ex-textarea::placeholder { color: var(--color-faint); }
+.ex-input:focus-visible, .ex-select:focus-visible, .ex-textarea:focus-visible { outline: none; border-color: var(--color-ring); box-shadow: 0 0 0 1px var(--color-background), 0 0 0 3px var(--color-ring); }
+.ex-input[aria-invalid="true"], .ex-select[aria-invalid="true"], .ex-textarea[aria-invalid="true"] { border-color: var(--color-returned); }
+.ex-input:disabled, .ex-select:disabled, .ex-textarea:disabled { opacity: 0.5; cursor: not-allowed; }
+.ex-textarea { height: auto; min-height: 6rem; padding: 8px 12px; line-height: 1.5; resize: vertical; }
+.ex-select { appearance: none; padding-right: 32px; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+@media (min-width: 768px) { .ex-input, .ex-select, .ex-textarea { font-size: var(--text-sm); } }
+.ex-check { display: flex; align-items: flex-start; gap: 12px; }
+.ex-check input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--color-primary); }
+/* A search box with its count beside it */
+.ex-search { display: flex; align-items: center; gap: 12px; }
+.ex-search .ex-input { max-width: 20rem; }
+
+/* --- Code, keys and the command pill ----------------------------------------------------------------- */
+
+.ex-code { padding: 0.1em 0.35em; border: 1px solid var(--color-border); border-radius: 5px; background: var(--color-muted); color: var(--color-strong); font-family: var(--font-mono); font-size: 0.85em; overflow-wrap: anywhere; }
+.ex-pre { margin: 0; padding: 16px 18px; overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-muted); color: var(--color-strong); font-family: var(--font-mono); font-size: var(--text-meta); line-height: 1.7; }
+.ex-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid var(--color-border-strong); border-bottom-width: 2px; border-radius: var(--radius-sm); background: var(--color-card); color: var(--color-strong); font-family: var(--font-mono); font-size: var(--text-2xs); line-height: 1; }
+/* The install command: one line you can copy. The Copied state is the kit's amber. */
+.ex-cmd { display: inline-flex; align-items: center; max-width: 100%; height: var(--control-h); padding-left: 14px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-card); color: var(--color-strong); font-family: var(--font-mono); font-size: var(--text-meta); }
+.ex-cmd code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-cmd code::before { content: "$ "; color: var(--color-faint); }
+.ex-cmd button { display: inline-flex; align-items: center; gap: 6px; height: 100%; margin-left: 14px; padding: 0 12px; border: 0; border-left: 1px solid var(--color-border); border-radius: 0 3px 3px 0; background: none; color: var(--color-subtle); font: inherit; font-family: var(--font-sans); font-size: var(--text-2xs); font-weight: 500; cursor: pointer; transition: background-color var(--dur-fast), color var(--dur-fast); }
+.ex-cmd button:hover { background: var(--color-muted); color: var(--color-strong); }
+.ex-cmd button.is-copied { background: var(--color-verified); color: var(--color-on-verified); }
+
+/* --- Loading ---------------------------------------------------------------------------------------- */
+
+.ex-skeleton { border-radius: var(--radius-md); background: var(--color-muted); animation: ex-pulse 1.6s ease-in-out infinite; }
+@keyframes ex-pulse { 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .ex-skeleton { animation: none; } }
+
+/* --- The dither: an amber texture, as a band or a fill ------------------------------------------------- */
+/* Bayer dots in amber on the page. A band is decoration: aria-hidden, never behind words. */
+.ex-dither { background-color: transparent; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6' shape-rendering='crispEdges' fill='%23FFBF00'%3E%3Crect width='2' height='2'/%3E%3Crect x='4' y='2' width='2' height='2'/%3E%3Crect x='2' y='4' width='2' height='2'/%3E%3C/svg%3E"); background-size: 6px 6px; }
+.ex-dither--dense { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6' shape-rendering='crispEdges' fill='%23FFBF00'%3E%3Crect width='2' height='2'/%3E%3Crect x='4' width='2' height='2'/%3E%3Crect x='2' y='2' width='2' height='2'/%3E%3Crect y='4' width='2' height='2'/%3E%3Crect x='4' y='4' width='2' height='2'/%3E%3C/svg%3E"); }
+
+/* --- Choosing: a segmented switch, a selectable list, chips, a search field --------------------------- */
+
+/* A few options, one on: a row of buttons in a muted track (role="group" or "tablist"; aria-pressed or
+   aria-selected on the one that's on). */
+.ex-segmented { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-md); background: var(--color-muted); }
+.ex-segmented > button, .ex-segmented > a { display: inline-flex; align-items: center; gap: 6px; height: calc(var(--control-h-sm) - 8px); padding: 0 12px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--color-subtle); font: inherit; font-size: var(--text-meta); font-weight: 500; text-decoration: none; white-space: nowrap; cursor: pointer; transition: color var(--dur-fast), background-color var(--dur-fast); }
+.ex-segmented > :hover { color: var(--color-strong); }
+.ex-segmented > [aria-pressed="true"], .ex-segmented > [aria-selected="true"], .ex-segmented > [aria-current="page"] { background: var(--color-card); color: var(--color-strong); box-shadow: var(--shadow-surface-2); }
+
+/* A list you pick one thing from (posts, screens, files): rows with a hairline between, the picked one muted. */
+.ex-list { margin: 0; padding: 0; list-style: none; }
+.ex-list > li + li { border-top: 1px solid var(--color-border); }
+.ex-row { display: grid; gap: 2px; width: 100%; padding: 10px 12px; border: 0; background: none; color: var(--color-body); font: inherit; text-align: left; text-decoration: none; cursor: pointer; transition: background-color var(--dur-fast); }
+.ex-row:hover { background: color-mix(in srgb, var(--color-muted) 60%, transparent); }
+.ex-row[aria-selected="true"], .ex-row[aria-current="page"], .ex-row[aria-current="true"] { background: var(--color-muted); box-shadow: inset 2px 0 0 var(--color-strong); }
+.ex-row:focus-visible { outline: 2px solid var(--color-ring); outline-offset: -2px; }
+
+/* A chip: a picked filter or tag, with an optional remove button. */
+.ex-chip { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 4px 0 8px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-card); color: var(--color-strong); font-size: var(--text-2xs); font-weight: 500; white-space: nowrap; }
+.ex-chip:not(:has(button)) { padding-right: 8px; }
+.ex-chip button { position: relative; display: grid; place-items: center; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 3px; background: none; color: var(--color-subtle); cursor: pointer; }
+.ex-chip button::before { content: ""; width: 8px; height: 8px; background: currentColor; -webkit-mask: var(--glyph-cross) center / contain no-repeat; mask: var(--glyph-cross) center / contain no-repeat; }
+.ex-chip button::after { content: ""; position: absolute; inset: -14px; }
+.ex-chip button:hover { background: var(--color-muted); color: var(--color-strong); }
+
+/* A search field: the magnifier drawn in, an optional clear button at the end. */
+.ex-search-field { position: relative; display: flex; align-items: center; min-width: 0; }
+.ex-search-field::before { content: ""; position: absolute; left: 12px; width: 13px; height: 13px; border: 1.5px solid var(--color-faint); border-radius: 50%; pointer-events: none; }
+.ex-search-field::after { content: ""; position: absolute; left: 23px; top: calc(50% + 4px); width: 5px; height: 1.5px; background: var(--color-faint); transform: rotate(45deg); pointer-events: none; }
+.ex-search-field .ex-input { padding-left: 34px; }
+.ex-search-field:has(button) .ex-input { padding-right: 40px; }
+.ex-search-field .ex-input::-webkit-search-cancel-button { display: none; }
+.ex-search-field button { position: absolute; right: 6px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-sm); background: none; color: var(--color-subtle); cursor: pointer; }
+.ex-search-field button::before { content: ""; width: 9px; height: 9px; background: currentColor; -webkit-mask: var(--glyph-cross) center / contain no-repeat; mask: var(--glyph-cross) center / contain no-repeat; }
+.ex-search-field button:hover { background: var(--color-muted); color: var(--color-strong); }
+/* A match inside text: a grey band under the words, never a colour. */
+.ex-hl { padding: 0 1px; border-radius: 2px; background: var(--color-selection); color: var(--color-strong); box-shadow: inset 0 -1.5px 0 var(--color-strong); }
+
+/* An avatar: initials or a picture in a square with 4px corners. */
+.ex-avatar { display: inline-grid; flex: none; place-items: center; width: 28px; height: 28px; overflow: hidden; border-radius: var(--radius-sm); background: var(--color-muted); color: var(--color-subtle); font-size: var(--text-2xs); font-weight: 600; text-transform: uppercase; }
+.ex-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ex-avatar--sm { width: 20px; height: 20px; font-size: 0.625rem; }
+
+/* --- Things that float: a menu, a dialog, a side sheet, a toast ------------------------------------------ */
+/* The only parts with shadows. A dialog or sheet goes over a scrim; Escape and a click on the scrim close it. */
+
+.ex-menu { min-width: 12rem; padding: 4px; border-radius: var(--radius-lg); background: var(--color-card); box-shadow: var(--shadow-surface-4); }
+.ex-menu__label { padding: 8px 8px 4px; color: var(--color-faint); font-size: var(--text-2xs); font-weight: 500; }
+.ex-menu__sep { height: 1px; margin: 4px -4px; background: var(--color-border); }
+.ex-menu__item { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 8px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--color-body); font: inherit; font-size: var(--text-sm); text-align: left; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.ex-menu__item:hover, .ex-menu__item:focus-visible { outline: none; background: var(--color-muted); color: var(--color-strong); }
+.ex-menu__item[aria-checked="true"]::after { content: ""; width: 10px; height: 8px; margin-left: auto; background: currentColor; -webkit-mask: var(--glyph-check) center / contain no-repeat; mask: var(--glyph-check) center / contain no-repeat; }
+.ex-menu__item kbd { margin-left: auto; color: var(--color-faint); font-family: var(--font-mono); font-size: var(--text-2xs); }
+.ex-menu__item--danger { color: var(--color-returned-ink); }
+
+.ex-scrim { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / 0.32); }
+.ex-dialog { width: min(32rem, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 0; overflow: auto; border: 0; border-radius: var(--radius-lg); background: var(--color-card); color: var(--color-body); box-shadow: var(--shadow-surface-5); }
+dialog.ex-dialog::backdrop { background: rgb(0 0 0 / 0.32); }
+.ex-dialog__head { display: grid; gap: 4px; padding: 20px 24px 0; }
+.ex-dialog__title { margin: 0; color: var(--color-strong); font-size: var(--text-base); font-weight: 600; line-height: 1.5rem; }
+.ex-dialog__desc { color: var(--color-subtle); font-size: var(--text-sm); }
+.ex-dialog__body { padding: 16px 24px; }
+.ex-dialog__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 0 24px 20px; }
+
+.ex-sheet { position: fixed; inset: 0 0 0 auto; z-index: 41; display: flex; flex-direction: column; width: min(28rem, 100vw); border-left: 1px solid var(--color-border); background: var(--color-card); box-shadow: var(--shadow-surface-5); }
+.ex-sheet--left { inset: 0 auto 0 0; border-left: 0; border-right: 1px solid var(--color-border); }
+.ex-sheet__head { display: flex; align-items: center; gap: 8px; height: var(--app-bar-h, 3rem); padding: 0 16px; border-bottom: 1px solid var(--color-border); }
+.ex-sheet__title { margin: 0; color: var(--color-strong); font-size: var(--text-sm); font-weight: 600; }
+.ex-sheet__head > :last-child { margin-left: auto; }
+.ex-sheet__body { flex: 1; overflow-y: auto; padding: 16px; }
+.ex-sheet__foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--color-border); }
+
+/* A toast: a short line in ink at the bottom, then it goes (role="status"). */
+.ex-toasts { position: fixed; bottom: 16px; left: 50%; z-index: 60; display: grid; gap: 8px; transform: translateX(-50%); pointer-events: none; }
+.ex-toast { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 14px; border-radius: var(--radius-md); background: var(--color-primary); color: var(--color-primary-foreground); font-size: var(--text-sm); box-shadow: var(--shadow-surface-4); pointer-events: auto; animation: ex-toast-in 200ms var(--ease-out-expo); }
+.ex-toast--danger { background: var(--color-returned); color: var(--color-on-returned); }
+@keyframes ex-toast-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .ex-toast { animation: none; } }
+
+/* --- Reading: rendered markdown -------------------------------------------------------------------------- */
+
+.ex-prose { max-width: 70ch; color: var(--color-body); font-size: var(--text-base); line-height: 1.6; overflow-wrap: break-word; }
+.ex-prose > * + * { margin-top: 1em; }
+.ex-prose :where(h1, h2, h3, h4) { margin: 1.8em 0 0; color: var(--color-strong); font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+.ex-prose > :where(h1, h2, h3, h4):first-child { margin-top: 0; }
+.ex-prose h1 { font-size: var(--text-2xl); }
+.ex-prose h2 { font-size: var(--text-xl); }
+.ex-prose h3 { font-size: var(--text-lg); }
+.ex-prose h4 { font-size: var(--text-base); }
+.ex-prose :where(h1, h2, h3, h4) + * { margin-top: 0.6em; }
+.ex-prose a { color: var(--color-strong); font-weight: 500; text-decoration: underline; text-decoration-color: var(--color-border-strong); text-underline-offset: 0.25em; }
+.ex-prose a:hover { text-decoration-color: currentColor; }
+.ex-prose :where(ul, ol) { padding-left: 1.4em; }
+.ex-prose li + li { margin-top: 0.35em; }
+.ex-prose li::marker { color: var(--color-faint); }
+.ex-prose strong { color: var(--color-strong); font-weight: 600; }
+.ex-prose :not(pre) > code { padding: 0.1em 0.35em; border: 1px solid var(--color-border); border-radius: 5px; background: var(--color-muted); color: var(--color-strong); font-family: var(--font-mono); font-size: 0.85em; }
+.ex-prose pre { margin: 1.2em 0 0; padding: 14px 16px; overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-muted); color: var(--color-strong); font-family: var(--font-mono); font-size: var(--text-meta); line-height: 1.7; }
+.ex-prose blockquote { margin-left: 0; padding-left: 14px; border-left: 2px solid var(--color-border-strong); color: var(--color-subtle); }
+.ex-prose hr { margin: 2em 0; border: 0; border-top: 1px solid var(--color-border); }
+.ex-prose table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.ex-prose th, .ex-prose td { padding: 8px 10px; border-bottom: 1px solid var(--color-border); text-align: left; }
+.ex-prose th { color: var(--color-subtle); font-size: var(--text-2xs); font-weight: 500; }
+.ex-prose img { max-width: 100%; height: auto; border-radius: var(--radius-md); }
+.ex-prose--sm { font-size: var(--text-sm); line-height: 1.55; }
+
+/* --- The app shell ----------------------------------------------------------------------------------- */
+/* A 240px sidebar (brand row, grouped nav, foot), a 48px top bar that sticks, and the content on fixed
+   gutters (16 / 24 / 32px) up to 1440px. Below 768px the sidebar folds away behind the menu button
+   (kit.js toggles `data-nav-open` on the shell). */
+
+.ex-shell { --app-bar-h: 3rem; display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; background: var(--color-background); font-size: var(--text-sm); line-height: 1.25rem; }
+.ex-sidebar { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; border-right: 1px solid var(--color-border); background: var(--color-card); }
+.ex-sidebar__brand { display: flex; align-items: center; gap: 8px; height: var(--app-bar-h); padding: 0 16px; color: var(--color-strong); font-weight: 600; text-decoration: none; }
+/* A tool's mark, left of its name in the brand row: 16px, drawn on a 16-unit grid in currentColor, ink only. */
+.ex-mark { display: block; flex: none; width: 16px; height: 16px; color: var(--color-strong); }
+.ex-sidebar__body { flex: 1; overflow-y: auto; padding: 8px; }
+.ex-sidebar__foot { padding: 8px; border-top: 1px solid var(--color-border); }
+.ex-nav-label { margin: 16px 8px 4px; color: var(--color-faint); font-family: var(--font-mono); font-size: var(--text-2xs); letter-spacing: 0.07em; text-transform: uppercase; }
+.ex-nav-label:first-child { margin-top: 4px; }
+.ex-nav { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
+.ex-nav a, .ex-nav button { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 8px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--color-body); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.ex-nav a:hover, .ex-nav button:hover { background: var(--color-muted); color: var(--color-strong); }
+.ex-nav [aria-current="page"] { background: var(--color-muted); color: var(--color-strong); font-weight: 500; }
+.ex-nav .ex-badge { margin-left: auto; }
+.ex-topbar { --control-h: var(--control-h-sm); position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; height: var(--app-bar-h); padding: 0 16px; border-bottom: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-background) 88%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.ex-topbar__end { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.ex-crumbs { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 0; padding: 0; list-style: none; color: var(--color-subtle); }
+.ex-crumbs li { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ex-crumbs li + li::before { content: "/"; color: var(--color-faint); }
+.ex-crumbs [aria-current="page"] { color: var(--color-strong); font-weight: 500; }
+.ex-crumbs a { color: inherit; text-decoration: none; }
+.ex-crumbs a:hover { color: var(--color-strong); }
+.ex-main { width: 100%; max-width: 1440px; margin: 0 auto; padding: 24px 16px 64px; }
+.ex-main > * + * { margin-top: 32px; }
+.ex-main--narrow { max-width: 1040px; }
+.ex-menu-button { display: none; }
+@media (min-width: 640px) { .ex-main { padding-inline: 24px; } }
+@media (min-width: 1024px) { .ex-main { padding-inline: 32px; } }
+@media (max-width: 767px) {
+  .ex-shell { grid-template-columns: minmax(0, 1fr); }
+  .ex-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 30; width: min(280px, 85vw); transform: translateX(-100%); transition: transform 200ms var(--ease-out-expo); box-shadow: var(--shadow-surface-5); }
+  .ex-shell[data-nav-open] .ex-sidebar { transform: none; }
+  .ex-shell[data-nav-open]::after { content: ""; position: fixed; inset: 0; z-index: 29; background: rgb(0 0 0 / 0.32); }
+  .ex-menu-button { display: inline-flex; }
+}
+/* A plain page without a sidebar: just the top bar and the content. */
+.ex-shell--bare { grid-template-columns: minmax(0, 1fr); }
+
+/* --- A small footer line: who made the tool ---------------------------------------------------------- */
+.ex-made { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--color-faint); font-size: var(--text-2xs); }
+.ex-made a { color: var(--color-subtle); text-decoration: none; }
+.ex-made a:hover { color: var(--color-strong); }
+/* excellent-kit:end */
+
+/* pressroom: the layout, and the few parts the kit doesn't have (pr-), on the kit's tokens.
+   Light by default whatever the OS says; dark is the reader's choice (.theme-dark on <html>). */
+html, body { height: 100%; }
+/* The kit's parts set their own display, which would beat the hidden attribute. */
+.ex-page [hidden] { display: none !important; }
+.pr-app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.pr-topbar { flex: none; }
+.pr-brand { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--color-strong); font-weight: 600; white-space: nowrap; }
+.pr-conn { min-width: 0; max-width: 18rem; }
+.pr-conn__text { overflow: hidden; text-overflow: ellipsis; }
+.pr-conn--list { display: none; }
+
+.pr-main { flex: 1 1 auto; display: flex; min-height: 0; }
+.pr-sidebar { flex: none; display: flex; flex-direction: column; width: 320px; min-height: 0; border-right: 1px solid var(--color-border); background: var(--color-card); }
+.pr-shead { display: flex; align-items: center; gap: 8px; padding: 8px 8px 0 16px; }
+.pr-shead__title { display: flex; align-items: center; gap: 6px; margin-right: auto; font-size: var(--text-sm); }
+.pr-counts { padding: 0 16px 10px; border-bottom: 1px solid var(--color-border); color: var(--color-subtle); font-size: var(--text-2xs); line-height: 1rem; }
+.pr-list { flex: 1 1 auto; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.pr-post { display: grid; gap: 6px; width: 100%; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--color-border); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background-color var(--dur-fast); }
+.pr-post:hover { background: color-mix(in srgb, var(--color-muted) 60%, transparent); }
+.pr-post[aria-current="true"] { background: var(--color-muted); box-shadow: inset 2px 0 0 var(--color-strong); }
+.pr-post:focus-visible { outline-offset: -2px; }
+.pr-post__title { color: var(--color-strong); font-weight: 500; }
+.pr-post__meta { display: flex; align-items: center; gap: 8px; color: var(--color-subtle); font-size: var(--text-2xs); font-variant-numeric: tabular-nums; }
+.pr-post__excerpt { overflow: hidden; color: var(--color-subtle); font-size: var(--text-meta); text-overflow: ellipsis; white-space: nowrap; }
+.pr-list .ex-empty { padding: 24px 16px; }
+
+.pr-detail { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--color-background); }
+.pr-detail:focus { outline: none; }
+.pr-empty { flex: 1; display: grid; place-items: center; padding: 32px 16px; }
+.pr-dhead { flex: none; padding: 12px 16px 0; }
+.pr-dhead__row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-bottom: 8px; }
+.pr-backrow { display: none; }
+.pr-titlewrap { display: flex; flex: 1 1 16rem; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.pr-dtitle { min-width: 0; overflow: hidden; font-size: var(--text-lg); line-height: 1.75rem; text-overflow: ellipsis; white-space: nowrap; }
+.pr-actions { margin-left: auto; }
+.pr-banner { display: flex; flex: none; align-items: center; gap: 10px; width: 100%; min-height: var(--control-h); padding: 0 16px; border: 0; border-bottom: 1px solid var(--color-border); background: var(--color-muted); color: var(--color-strong); font: inherit; text-align: left; cursor: pointer; }
+.pr-banner .ex-glyph--arrow { margin-left: auto; transition: transform var(--dur-fast) var(--ease-out-expo); }
+.pr-banner:hover .ex-glyph--arrow { transform: translateX(3px); }
+.pr-banner:focus-visible { outline-offset: -2px; }
+
+/* The publish result: a kit alert with a dismiss button and git's output under it. */
+.ex-alert.pr-result:has(> .ex-glyph) { flex: none; grid-template-columns: 16px minmax(0, 1fr) auto; margin: 12px 16px 0; }
+.pr-result__dismiss { grid-column: 3; grid-row: 1 / span 2; align-self: start; margin: -4px -8px 0 0; }
+.pr-result .ex-pre { grid-column: 2; max-height: 40vh; margin-top: 8px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.pr-panes { flex: 1 1 auto; display: flex; min-height: 0; }
+.pr-pane { flex: 1 1 0; min-width: 0; overflow-y: auto; }
+.pr-pane + .pr-pane { border-left: 1px solid var(--color-border); }
+.pr-pane[hidden] { display: none; }
+.pr-editor { display: grid; gap: 16px; padding: 16px; }
+.pr-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.pr-body { min-height: 24rem; font-family: var(--font-mono); font-size: var(--text-meta); line-height: 1.6; tab-size: 2; }
+.pr-pane--read { background: var(--color-card); }
+.pr-pane__head { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 10px 24px; border-bottom: 1px solid var(--color-border); background: var(--color-card); }
+.pr-pane__label { color: var(--color-strong); font-size: var(--text-meta); font-weight: 500; }
+.pr-pane__note { color: var(--color-subtle); font-size: var(--text-2xs); line-height: 1rem; }
+
+/* The markdown preview's reading text */
+.pr-prose { max-width: 68ch; padding: 24px; color: var(--color-body); font-size: var(--text-base); line-height: 1.65; }
+.pr-prose > * + * { margin-top: 1em; }
+.pr-prose :is(h1, h2, h3) { color: var(--color-strong); font-weight: 600; letter-spacing: -0.01em; }
+.pr-prose h1 { font-size: var(--text-2xl); line-height: 2rem; }
+.pr-prose h2 { margin-top: 1.6em; font-size: var(--text-xl); line-height: 1.75rem; }
+.pr-prose h3 { margin-top: 1.4em; font-size: var(--text-lg); line-height: 1.5rem; }
+.pr-prose a { color: var(--color-strong); text-decoration: underline; text-decoration-color: var(--color-border-strong); text-underline-offset: 0.3em; }
+.pr-prose a:hover { text-decoration-color: currentColor; }
+.pr-prose strong { color: var(--color-strong); font-weight: 600; }
+.pr-prose :is(ul, ol) { padding-left: 1.4em; }
+.pr-prose li + li { margin-top: 0.25em; }
+.pr-prose blockquote { margin: 0; padding-left: 16px; border-left: 2px solid var(--color-border-strong); color: var(--color-subtle); }
+.pr-prose > * + blockquote { margin-top: 1em; }
+.pr-prose pre { margin: 0; padding: 14px 16px; overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-muted); color: var(--color-strong); font-size: var(--text-meta); line-height: 1.6; }
+.pr-prose code { font-family: var(--font-mono); font-size: 0.875em; }
+.pr-prose :not(pre) > code { padding: 0.1em 0.35em; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-muted); color: var(--color-strong); }
+.pr-prose pre code { font-size: inherit; }
+.pr-prose hr { border: 0; border-top: 1px solid var(--color-border); }
+.pr-prose img { max-width: 100%; height: auto; border-radius: var(--radius-lg); }
+.pr-mdx { display: grid; justify-items: start; gap: 8px; }
+.pr-mdx pre { justify-self: stretch; }
+.pr-raw { margin: 0; padding: 16px 24px; color: var(--color-body); font-family: var(--font-mono); font-size: var(--text-meta); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Dialogs: a floating surface, the one place besides the toast that casts a shadow. */
+.pr-dialog { width: min(30rem, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-card); color: var(--color-body); box-shadow: var(--shadow-surface-5); }
+.pr-dialog::backdrop { background: rgb(0 0 0 / 0.4); }
+.pr-dialog__body { display: grid; gap: 16px; padding: 20px; }
+.pr-dialog__title { font-size: var(--text-base); line-height: 1.5rem; }
+.pr-dialog__desc { margin-top: 4px; color: var(--color-subtle); }
+.pr-dialog__acts { justify-content: flex-end; }
+.pr-dialog__acts .pr-spacer { flex: 1; }
+.pr-checks { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: var(--text-meta); }
+.pr-checks:empty { display: none; }
+.pr-checks li { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--color-body); white-space: nowrap; }
+.pr-checks li.is-no { color: var(--color-returned-ink); }
+.pr-checks .ex-glyph { width: 10px; }
+.pr-checks__path { min-width: 0; overflow: hidden; color: var(--color-subtle); font-family: var(--font-mono); font-size: var(--text-2xs); text-overflow: ellipsis; white-space: nowrap; }
+.pr-msg { display: flex; align-items: center; gap: 8px; font-size: var(--text-meta); }
+.pr-msg:empty { display: none; }
+.pr-msg.is-err { color: var(--color-returned-ink); }
+
+.pr-toast { position: fixed; left: 50%; bottom: 20px; z-index: 60; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); padding: 10px 14px; border: 1px solid var(--color-border); color: var(--color-strong); opacity: 0; pointer-events: none; transform: translate(-50%, 4px); transition: opacity var(--dur-fast), transform var(--dur-fast); }
+.pr-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+.pr-toast.is-err { color: var(--color-returned-ink); }
+@media (prefers-reduced-motion: reduce) { .pr-toast { transition: none; } }
+
+/* A phone: one column. The list, or the open post with a way back. */
+@media (max-width: 767px) {
+  .pr-conn--top { display: none; }
+  .pr-conn--list { display: inline-flex; max-width: 11rem; }
+  .pr-sidebar { width: 100%; border-right: 0; }
+  .pr-app[data-pane="list"] .pr-detail, .pr-app[data-pane="detail"] .pr-sidebar { display: none; }
+  .pr-detail { overflow-y: auto; }
+  .pr-backrow { display: block; width: 100%; margin: -4px 0 -4px -12px; }
+  .pr-dtitle { white-space: normal; }
+  .pr-actions { width: 100%; margin-left: 0; }
+  .pr-panes { flex: 1 0 auto; flex-direction: column; }
+  .pr-pane { flex: 1 0 auto; overflow: visible; }
+  .pr-pane + .pr-pane { border-left: 0; }
+  .pr-grid2 { grid-template-columns: 1fr; }
+  .pr-prose, .pr-raw { padding-inline: 16px; }
+  .pr-pane__head { position: static; padding-inline: 16px; }
+}
+</style>
+</head>
+<body class="ex-page" data-density="compact">
+<a class="ex-skip" href="#detail">Skip to the post</a>
+<div class="pr-app" id="app" data-pane="list">
+  <header class="ex-topbar pr-topbar">
+    <span class="pr-brand">
+      <svg class="ex-mark" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="2" width="14" height="4"/><rect x="1" y="8" width="6" height="2"/><rect x="9" y="8" width="6" height="2"/><rect x="1" y="12" width="6" height="2"/><rect x="9" y="12" width="6" height="2"/></svg>
+      pressroom
+    </span>
+    <div class="ex-topbar__end">
+      <button class="ex-btn ex-btn--ghost ex-btn--sm pr-conn pr-conn--top" type="button" aria-haspopup="dialog"></button>
+      <button class="ex-btn ex-btn--outline ex-btn--sm" type="button" data-ex-theme-toggle aria-pressed="false">Dark</button>
+      <button class="ex-btn ex-btn--outline ex-btn--sm" type="button" id="newBtn" aria-haspopup="dialog">New post</button>
+    </div>
+  </header>
+
+  <div class="pr-main">
+    <aside class="pr-sidebar" aria-labelledby="postsH">
+      <div class="pr-shead">
+        <h2 class="pr-shead__title" id="postsH">Posts <span class="ex-badge ex-badge--count" id="countAll">0</span></h2>
+        <button class="ex-btn ex-btn--outline ex-btn--sm pr-conn pr-conn--list" type="button" aria-haspopup="dialog"></button>
+        <button class="ex-btn ex-btn--ghost ex-btn--sm" type="button" id="reloadBtn">Reload</button>
+      </div>
+      <p class="pr-counts" id="countLbl"></p>
+      <ul class="pr-list" id="list"></ul>
+    </aside>
+
+    <main class="pr-detail" id="detail" tabindex="-1"></main>
+  </div>
+</div>
+
+<dialog class="pr-dialog" id="newDialog" aria-labelledby="newH">
+  <form class="pr-dialog__body" method="dialog" id="newForm">
+    <div>
+      <h2 class="pr-dialog__title" id="newH">New post</h2>
+      <p class="pr-dialog__desc">pressroom writes a draft <code class="ex-code">&lt;slug&gt;.mdx</code> into your posts folder.</p>
+    </div>
+    <div class="ex-field">
+      <label class="ex-label" for="newTitle">Title</label>
+      <input class="ex-input" id="newTitle" placeholder="How we made publishing one command" autocomplete="off" />
+    </div>
+    <div class="ex-toolbar pr-dialog__acts">
+      <button class="ex-btn ex-btn--ghost" type="button" id="newCancel">Cancel</button>
+      <button class="ex-btn" type="submit" id="newCreate">Create draft</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pr-dialog" id="connDialog" aria-labelledby="connH">
+  <form class="pr-dialog__body" method="dialog" id="connForm">
+    <div>
+      <h2 class="pr-dialog__title" id="connH">Connect your site</h2>
+      <p class="pr-dialog__desc">Point pressroom at your static site's git checkout. Each publish is one commit that holds only that post's file, and pressroom never force-pushes.</p>
+    </div>
+    <div class="ex-field">
+      <label class="ex-label" for="cSiteRepo">Site repo path</label>
+      <input class="ex-input" id="cSiteRepo" placeholder="~/code/your-site" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="pr-grid2">
+      <div class="ex-field">
+        <label class="ex-label" for="cContentDir">Content folder</label>
+        <input class="ex-input" id="cContentDir" placeholder="content/posts" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="ex-field">
+        <label class="ex-label" for="cBranch">Branch</label>
+        <input class="ex-input" id="cBranch" placeholder="main" autocomplete="off" spellcheck="false" />
+      </div>
+    </div>
+    <div class="ex-field">
+      <label class="ex-label" for="cAuthor">Default author</label>
+      <select class="ex-select" id="cAuthor"></select>
+      <p class="ex-hint" id="cAuthorHint"></p>
+    </div>
+    <ul class="pr-checks" id="connChecks" aria-live="polite"></ul>
+    <p class="pr-msg" id="connMsg" aria-live="polite"></p>
+    <div class="ex-toolbar pr-dialog__acts">
+      <button class="ex-btn ex-btn--outline" type="button" id="connCheck">Check</button>
+      <span class="pr-spacer"></span>
+      <button class="ex-btn ex-btn--ghost" type="button" id="connCancel">Cancel</button>
+      <button class="ex-btn" type="submit" id="connSave">Connect</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="pr-toast ex-float" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* ── theme: the kit's contract (kit.js), inlined because this page is one file ── */
+(function () {
+  var root = document.documentElement;
+  function sync() {
+    document.querySelectorAll("[data-ex-theme-toggle]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(root.classList.contains("theme-dark")));
+    });
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target instanceof Element ? e.target.closest("[data-ex-theme-toggle]") : null;
+    if (!b) return;
+    var next = root.classList.contains("theme-dark") ? "light" : "dark";
+    root.classList.toggle("theme-dark", next === "dark");
+    try { localStorage.setItem("ex-theme", next); } catch (err) { /* private window */ }
+    sync();
+  });
+  sync();
+})();
+
+/* ── tiny helpers ────────────────────────────────────────────────────────── */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const el = (tag, attrs = {}, kids = []) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v;
+    else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
+    else if (v !== null && v !== undefined && v !== false) n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of [].concat(kids)) if (kid) n.append(kid);
+  return n;
+};
+const glyph = (kind) => el("span", { class: "ex-glyph" + (kind ? " ex-glyph--" + kind : ""), "aria-hidden": "true" });
+
+async function api(method, path, body) {
+  try {
+    const res = await fetch(path, {
+      method,
+      headers: body ? { "content-type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return await res.json().catch(() => ({ ok: false, error: "The server sent a response pressroom couldn't read." }));
+  } catch {
+    return { ok: false, error: "Can't reach the pressroom server. Is it still running?" };
+  }
+}
+
+let toastTimer = null;
+/** A short notice at the foot of the page. kind: "ok" (check), "err" (red, cross) or none. */
+function toast(msg, kind) {
+  const t = $("#toast");
+  t.textContent = "";
+  if (kind === "ok") t.append(glyph());
+  if (kind === "err") t.append(glyph("cross"));
+  t.append(el("span", { text: msg }));
+  t.className = "pr-toast ex-float is-on" + (kind === "err" ? " is-err" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("is-on"), kind === "err" ? 5000 : 2600);
+}
+
+/* markdown-preview:begin */
+// The preview is a small markdown renderer, not an MDX compiler. It escapes the text
+// first, then draws headings, paragraphs, flat lists, block quotes, fenced code,
+// rules, links, images, bold, italic and inline code. MDX it can't run (import and
+// export lines, JSX components, HTML tags) is shown as labelled code: only your
+// site's build can render it.
+function renderMarkdown(src) {
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const MDX = /^\s*(?:(?:import|export)\s|<\/?[A-Za-z][\w.-]*(?:\s|\/?>|$)|<\/?>)/;
+  const BLOCK = /^(#{1,6}\s|```|\s*>|\s*([-*+]|\d+\.)\s)/;
+  const lines = String(src).replace(/\r\n/g, "\n").split("\n");
+  let html = "";
+  let i = 0;
+  const inline = (t) => {
+    let s = esc(t);
+    // code spans first (so their contents aren't touched by other rules)
+    s = s.replace(/`([^`]+)`/g, (_, c) => `<code>${c}</code>`);
+    s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, a, u) => `<img alt="${a}" src="${u}">`);
+    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, txt, u) => {
+      const safe = /^(https?:|\/|#|mailto:)/i.test(u) ? u : "#";
+      return `<a href="${safe}" rel="noopener noreferrer nofollow" target="_blank">${txt}</a>`;
+    });
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+    s = s.replace(/(^|[^_])_([^_\n]+)_/g, "$1<em>$2</em>");
+    return s;
+  };
+  while (i < lines.length) {
+    const line = lines[i];
+    // fenced code
+    if (/^```[\w-]*\s*$/.test(line)) {
+      const buf = [];
+      i++;
+      while (i < lines.length && !/^```\s*$/.test(lines[i])) buf.push(lines[i++]);
+      i++; // closing fence
+      html += `<pre><code>${esc(buf.join("\n"))}</code></pre>`;
+      continue;
+    }
+    if (/^\s*$/.test(line)) { i++; continue; }
+    // MDX: shown as code, never run
+    if (MDX.test(line)) {
+      const buf = [];
+      while (i < lines.length && !/^\s*$/.test(lines[i])) buf.push(lines[i++]);
+      html += `<div class="pr-mdx"><span class="ex-badge ex-badge--neutral">MDX, shown as code</span><pre><code>${esc(buf.join("\n"))}</code></pre></div>`;
+      continue;
+    }
+    // heading
+    const h = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (h) { const lvl = Math.min(h[1].length, 3); html += `<h${lvl}>${inline(h[2])}</h${lvl}>`; i++; continue; }
+    // rule
+    if (/^\s*(---|\*\*\*|___)\s*$/.test(line)) { html += "<hr>"; i++; continue; }
+    // block quote
+    if (/^\s*>\s?/.test(line)) {
+      const buf = [];
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ""));
+      html += `<blockquote>${inline(buf.join(" "))}</blockquote>`;
+      continue;
+    }
+    // list (ordered or unordered; nested items flatten)
+    if (/^\s*([-*+]|\d+\.)\s+/.test(line)) {
+      const ordered = /^\s*\d+\.\s+/.test(line);
+      const items = [];
+      while (i < lines.length && /^\s*([-*+]|\d+\.)\s+/.test(lines[i])) {
+        items.push(lines[i].replace(/^\s*([-*+]|\d+\.)\s+/, ""));
+        i++;
+      }
+      html += `<${ordered ? "ol" : "ul"}>${items.map((t) => `<li>${inline(t)}</li>`).join("")}</${ordered ? "ol" : "ul"}>`;
+      continue;
+    }
+    // paragraph (gather until a blank line or a block starter)
+    const buf = [];
+    while (i < lines.length && !/^\s*$/.test(lines[i]) && !BLOCK.test(lines[i]) && !MDX.test(lines[i])) {
+      buf.push(lines[i++]);
+    }
+    html += `<p>${inline(buf.join(" "))}</p>`;
+  }
+  return html;
+}
+/* markdown-preview:end */
+
+/* ── state ───────────────────────────────────────────────────────────────── */
+let CONFIG = null;
+let CONNECTION = null; // { configured, siteRepoExists, isGitRepo, contentDirExists, contentPostsDir }
+let POSTS = [];
+let current = null; // the post as saved on disk
+let work = null;    // the post as edited here (current + unsaved edits)
+let dirty = false;
+let view = "split"; // split | edit | preview | raw
+let lastPublish = null;
+let busy = false;
+const narrow = window.matchMedia("(max-width: 767px)");
+
+const STATUS = {
+  draft: { cls: "ex-badge--warning", label: "Draft" },         // not yet: an open square
+  ready: { cls: "ex-badge--info", label: "Ready" },            // queued to publish: an ink outline
+  published: { cls: "ex-badge--success", label: "Published" }, // done: a check
+};
+const statusList = () => CONFIG?.statuses || ["draft", "ready", "published"];
+function statusBadge(s, id) {
+  const m = STATUS[s] || { cls: "ex-badge--neutral", label: s };
+  return el("span", { class: "ex-badge " + m.cls, text: m.label, id });
+}
+
+/** On a phone there's no room for two panes, so Split shows the preview. */
+const effectiveView = () => (view === "split" && narrow.matches ? "preview" : view);
+
+/** Publishing is live only when a site is configured AND it's a real git repo. */
+function isConnected() { return Boolean(CONNECTION && CONNECTION.configured && CONNECTION.isGitRepo); }
+
+/** The last path segment (POSIX or Windows): the site repo's folder name. */
+function baseName(p) {
+  if (!p) return "";
+  return String(p).replace(/[\/\\]+$/, "").split(/[\/\\]/).pop() || String(p);
+}
+
+/* ── rendering ───────────────────────────────────────────────────────────── */
+
+/** The connection button: a check and "site · branch" when live, an open square when not. */
+function renderConnChip() {
+  for (const b of $$(".pr-conn")) {
+    b.textContent = "";
+    if (isConnected()) {
+      b.append(glyph(), el("span", { class: "pr-conn__text", text: baseName(CONFIG.siteRepo) + (CONFIG.branch ? " · " + CONFIG.branch : "") }));
+      b.title = "Publishing to " + CONFIG.siteRepo + " (" + CONFIG.branch + "). Click to change.";
+      b.setAttribute("aria-label", "Connected to " + baseName(CONFIG.siteRepo) + ", branch " + CONFIG.branch + ". Change the site");
+    } else {
+      b.append(glyph("open"), el("span", { class: "pr-conn__text", text: "Not connected" }));
+      b.title = "Connect your site to publish";
+      b.setAttribute("aria-label", "Not connected. Connect your site");
+    }
+  }
+}
+
+function renderList() {
+  const list = $("#list");
+  list.textContent = "";
+  if (!POSTS.length) {
+    list.append(el("li", {}, el("div", { class: "ex-empty ex-empty--bare" }, [
+      el("p", { class: "ex-empty__title", text: "No posts yet" }),
+      el("p", { class: "ex-empty__text", text: "Start one with New post, or run pressroom new in a terminal." }),
+    ])));
+  }
+  for (const p of POSTS) {
+    const on = Boolean(current && current.slug === p.slug);
+    const when = p.date ? p.date : (p.created ? "Created " + p.created : "");
+    list.append(el("li", {}, el("button", {
+      class: "pr-post", type: "button", "data-slug": p.slug, "aria-current": on ? "true" : "false",
+      onclick: () => selectPost(p.slug),
+    }, [
+      el("span", { class: "pr-post__title", text: p.title }),
+      el("span", { class: "pr-post__meta" }, [statusBadge(p.status), when ? el("span", { text: when }) : null]),
+      p.excerpt ? el("span", { class: "pr-post__excerpt", text: p.excerpt }) : null,
+    ])));
+  }
+  $("#countAll").textContent = String(POSTS.length);
+  $("#countLbl").textContent = statusList().map((s) => `${POSTS.filter((p) => p.status === s).length} ${s}`).join(" · ");
+}
+
+function authorOptions(selected) {
+  const authors = [];
+  for (const a of [selected, CONFIG?.defaultAuthor, ...(CONFIG?.authors || [])]) {
+    if (a && !authors.includes(a)) authors.push(a);
+  }
+  return authors;
+}
+
+/** Re-render something without losing the caret or the scroll position. */
+function keepPlace(fn) {
+  const a = document.activeElement;
+  const id = a && a.id;
+  const sel = a && "selectionStart" in a ? [a.selectionStart, a.selectionEnd] : null;
+  const scrolls = $$(".pr-pane").map((p) => p.scrollTop);
+  fn();
+  $$(".pr-pane").forEach((p, i) => { if (scrolls[i]) p.scrollTop = scrolls[i]; });
+  const back = id && document.getElementById(id);
+  if (back && back !== document.activeElement) {
+    back.focus({ preventScroll: true });
+    if (sel) try { back.setSelectionRange(sel[0], sel[1]); } catch { /* not a text field */ }
+  }
+}
+
+function field(label, input, hint) {
+  const hintId = hint ? input.id + "Hint" : null;
+  if (hintId) input.setAttribute("aria-describedby", hintId);
+  return el("div", { class: "ex-field" }, [
+    el("label", { class: "ex-label", for: input.id, text: label }),
+    input,
+    hint ? el("p", { class: "ex-hint", id: hintId, text: hint }) : null,
+  ]);
+}
+
+function renderDetail() {
+  const d = $("#detail");
+  d.textContent = "";
+  if (!work) {
+    d.append(el("div", { class: "pr-empty" }, el("div", { class: "ex-empty ex-empty--bare" }, [
+      el("p", { class: "ex-empty__title", text: "No post open" }),
+      el("p", { class: "ex-empty__text", text: "Pick a post from the list, or start a new one." }),
+      el("div", { class: "ex-empty__actions" }, el("button", { class: "ex-btn", type: "button", text: "New post", onclick: openNew })),
+    ])));
+    return;
+  }
+  const p = work;
+  const v = effectiveView();
+  const canPublish = isConnected();
+
+  // head: the title, its state, the actions, then the view tabs
+  const tabs = el("div", { class: "ex-tabs", role: "tablist", "aria-label": "View" },
+    ["split", "edit", "preview", "raw"].filter((t) => !(t === "split" && narrow.matches)).map((t) =>
+      el("button", {
+        class: "ex-tab", type: "button", role: "tab", "aria-selected": v === t ? "true" : "false",
+        text: t[0].toUpperCase() + t.slice(1), onclick: () => { view = t; keepPlace(renderDetail); },
+      })));
+  const head = el("div", { class: "pr-dhead" }, [
+    el("div", { class: "pr-dhead__row" }, [
+      el("div", { class: "pr-backrow" }, el("button", {
+        class: "ex-btn ex-btn--ghost ex-btn--sm", type: "button", onclick: showList,
+      }, [glyph("back"), el("span", { text: "Posts" })])),
+      el("div", { class: "pr-titlewrap" }, [
+        el("h1", { class: "pr-dtitle", id: "dTitle", text: p.title || p.slug }),
+        statusBadge(current.status, "dStatus"),
+        el("span", { class: "ex-badge ex-badge--warning", id: "unsaved", text: "Unsaved", hidden: !dirty }),
+      ]),
+      el("div", { class: "ex-toolbar pr-actions" }, [
+        el("button", { class: "ex-btn ex-btn--outline ex-btn--sm", type: "button", id: "saveBtn", text: "Save", onclick: savePost }),
+        el("button", { class: "ex-btn ex-btn--outline ex-btn--sm", type: "button", id: "dryBtn", text: "Dry run", onclick: () => publish(true), disabled: busy }),
+        el("button", {
+          class: "ex-btn ex-btn--sm", type: "button", id: "pubBtn", disabled: busy,
+          text: busy ? "Publishing…" : (canPublish && current.status === "published" ? "Re-publish" : "Publish"),
+          title: canPublish ? "Commit this post's file to " + baseName(CONFIG.siteRepo) : "Connect a site first",
+          onclick: () => (canPublish ? publish(false) : openConn()),
+        }),
+      ]),
+    ]),
+    el("div", { class: "ex-tabs-scroll" }, tabs),
+  ]);
+  d.append(head);
+
+  // Until a site is connected, one click from here to the Connect dialog.
+  if (!canPublish) {
+    d.append(el("button", { class: "pr-banner", type: "button", onclick: openConn }, [
+      glyph("open"), el("span", { text: "Connect your site to publish this post" }), glyph("arrow"),
+    ]));
+  }
+
+  if (lastPublish) d.append(renderResult(lastPublish));
+
+  const panes = el("div", { class: "pr-panes" });
+
+  // editor
+  const bind = (input, key, map) => {
+    const on = () => { work[key] = map ? map(input.value) : input.value; markDirty(key); };
+    input.addEventListener("input", on);
+    if (input.tagName === "SELECT") input.addEventListener("change", on);
+    return input;
+  };
+  const statusSel = el("select", { class: "ex-select", id: "fStatus" },
+    statusList().map((s) => el("option", { value: s, text: (STATUS[s] || { label: s }).label, selected: s === p.status })));
+  const authorSel = el("select", { class: "ex-select", id: "fAuthor" },
+    [el("option", { value: "", text: "None", selected: !p.author })].concat(
+      authorOptions(p.author).map((a) => el("option", { value: a, text: a, selected: a === p.author }))));
+  const editor = el("section", { class: "pr-pane", "aria-label": "Edit", hidden: v === "preview" || v === "raw" }, el("div", { class: "pr-editor" }, [
+    field("Title", bind(el("input", { class: "ex-input", id: "fTitle", value: p.title }), "title")),
+    field("Excerpt", bind(el("input", { class: "ex-input", id: "fExcerpt", value: p.excerpt || "" }), "excerpt"), "Published as the site's description."),
+    el("div", { class: "pr-grid2" }, [
+      field("Status", bind(statusSel, "status")),
+      field("Author", bind(authorSel, "author")),
+    ]),
+    field("Tags", bind(el("input", { class: "ex-input", id: "fTags", value: (p.tags || []).join(", "), placeholder: "Writing, Tools" }), "tags",
+      (s) => s.split(",").map((x) => x.trim()).filter(Boolean)), "Comma separated. If the site's copy already has tags, publish keeps those."),
+    field("Body", bind(el("textarea", { class: "ex-textarea pr-body", id: "fBody", spellcheck: "true" }, document.createTextNode(p.body || "")), "body"),
+      "Markdown. MDX components are kept as written, but the preview shows them as code."),
+  ]));
+  panes.append(editor);
+
+  // markdown preview, or the raw file
+  const read = el("section", { class: "pr-pane pr-pane--read", "aria-label": v === "raw" ? "Raw file" : "Markdown preview", hidden: v === "edit" });
+  if (v === "raw") {
+    read.append(
+      el("div", { class: "pr-pane__head" }, [
+        el("span", { class: "pr-pane__label", text: "Raw file" }),
+        el("span", { class: "pr-pane__note", text: "The post file in your posts folder, with your edits. Dry run shows what publish writes to the site." }),
+      ]),
+      el("pre", { class: "pr-raw", id: "raw" }, document.createTextNode(rawFile(p))),
+    );
+  } else {
+    const prose = el("article", { class: "pr-prose", id: "preview" });
+    prose.innerHTML = renderMarkdown(p.body || "");
+    read.append(
+      el("div", { class: "pr-pane__head" }, [
+        el("span", { class: "pr-pane__label", text: "Markdown preview" }),
+        el("span", { class: "pr-pane__note", text: "Not MDX: components, JSX and imports show as code. Your site's build renders them." }),
+      ]),
+      prose,
+    );
+  }
+  panes.append(read);
+  d.append(panes);
+}
+
+/** The publish result: what git did, or why it didn't. Failure is the only red. */
+function renderResult(r) {
+  let g, title, desc, pre = null, cls = "ex-alert pr-result", role = "status";
+  if (r.dryRun) {
+    g = "open"; title = "Dry run: nothing written";
+    desc = "Publish would write " + (r.relPath || "this file") + " to your site:";
+    pre = r.content || "";
+  } else if (!r.ok) {
+    g = "cross"; title = "Publish failed"; cls += " ex-alert--danger"; role = "alert";
+    desc = "Nothing was pushed. " + (/^site-repo|^content-posts/.test(r.reason || "") ? "Check the site connection." : "Git said:");
+    pre = r.reason || "unknown error";
+  } else if (r.unchanged) {
+    g = ""; title = "Already up to date";
+    desc = "The site's copy of " + r.relPath + " already matches. No commit.";
+  } else if (r.retried) {
+    g = ""; title = "Pushed";
+    desc = "The earlier commit of " + r.relPath + (r.sha ? " (" + r.sha.slice(0, 9) + ")" : "") + " hadn't reached your site. It has now.";
+  } else {
+    g = ""; title = r.pushed ? "Committed and pushed" : "Committed, not pushed";
+    desc = r.relPath + (r.sha ? " in commit " + r.sha.slice(0, 9) : "");
+  }
+  return el("div", { class: cls, role }, [
+    glyph(g),
+    el("div", { class: "ex-alert__title", text: title }),
+    el("button", { class: "ex-btn ex-btn--ghost ex-btn--sm pr-result__dismiss", type: "button", text: "Dismiss", onclick: () => { lastPublish = null; keepPlace(renderDetail); } }),
+    el("div", { class: "ex-alert__desc", text: desc }),
+    pre !== null ? el("pre", { class: "ex-pre" }, document.createTextNode(pre)) : null,
+  ]);
+}
+
+/* ── the raw view mirrors the local file (src/posts.mjs serializePostFile) ─── */
+function rawFile(p) {
+  const q = (s) => '"' + String(s).trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+  const fm = ["---", "title: " + q(p.title || p.slug), "status: " + p.status];
+  if (p.excerpt && p.excerpt.trim()) fm.push("excerpt: " + q(p.excerpt));
+  if (p.author && p.author.trim()) fm.push("author: " + q(p.author));
+  if (p.date && p.date.trim()) fm.push("date: " + q(p.date));
+  if ((p.tags || []).length) { fm.push("tags:"); for (const t of p.tags) fm.push("  - " + q(t)); }
+  if (p.created) fm.push("created: " + q(p.created));
+  if (p.updated) fm.push("updated: " + q(p.updated));
+  fm.push("---", "", String(p.body || "").trim(), "");
+  return fm.join("\n");
+}
+
+/* ── interactions ────────────────────────────────────────────────────────── */
+function markDirty(key) {
+  dirty = true;
+  const badge = $("#unsaved");
+  if (badge) badge.hidden = false;
+  if (key === "title") $("#dTitle").textContent = work.title || work.slug;
+  const prev = $("#preview");
+  if (prev && key === "body") prev.innerHTML = renderMarkdown(work.body || "");
+  const raw = $("#raw");
+  if (raw) raw.textContent = rawFile(work);
+}
+
+function showList() {
+  $("#app").dataset.pane = "list";
+  const on = $(".pr-post[aria-current='true']");
+  if (on) on.focus();
+}
+
+async function loadPosts() {
+  const r = await api("GET", "/api/posts");
+  if (!r.ok) { toast(r.error || "Couldn't load the posts", "err"); return; }
+  POSTS = r.posts;
+  renderList();
+}
+
+async function selectPost(slug) {
+  if (current && slug === current.slug) { $("#app").dataset.pane = "detail"; return; }
+  if (dirty && !confirm("Discard your unsaved changes?")) return;
+  const r = await api("GET", "/api/posts/" + encodeURIComponent(slug));
+  if (!r.ok) { toast(r.error || "Couldn't open the post", "err"); return; }
+  current = r.post;
+  work = { ...current };
+  dirty = false;
+  lastPublish = null;
+  renderList();
+  renderDetail();
+  $("#app").dataset.pane = "detail";
+  $("#detail").scrollTop = 0;
+  if (narrow.matches) $("#detail").focus({ preventScroll: true });
+}
+
+async function savePost() {
+  if (!work) return false;
+  const r = await api("POST", "/api/posts/" + encodeURIComponent(work.slug), {
+    title: work.title, excerpt: work.excerpt, author: work.author,
+    status: work.status, tags: work.tags, body: work.body,
+  });
+  if (!r.ok) { toast(r.error || "Couldn't save", "err"); return false; }
+  current = r.post;
+  work = { ...current };
+  dirty = false;
+  toast("Saved", "ok");
+  await loadPosts();
+  keepPlace(renderDetail);
+  return true;
+}
+
+async function publish(dryRun) {
+  if (!work || busy) return;
+  if (dirty) {
+    const save = confirm(dryRun ? "Save your changes first? A dry run reads the saved file." : "Save your changes before publishing?");
+    if (save) { if (!(await savePost())) return; }
+    else if (!dryRun) return;
+  }
+  busy = !dryRun;
+  if (busy) keepPlace(renderDetail);
+  const r = await api("POST", "/api/publish/" + encodeURIComponent(work.slug), { dryRun });
+  busy = false;
+  if (!r.ok) { toast(r.error || "The publish call failed", "err"); keepPlace(renderDetail); return; }
+  lastPublish = r.result;
+  if (!r.result.ok) toast("Publish failed", "err");
+  else if (dryRun) toast("Dry run ready");
+  else toast(r.result.unchanged ? "Already up to date" : r.result.retried ? "Pushed the earlier commit" : (r.result.pushed ? "Published and pushed" : "Committed"), "ok");
+  if (!dryRun) {
+    // A publish can stamp the post (status, date) before git runs, so read it back either way.
+    const fresh = await api("GET", "/api/posts/" + encodeURIComponent(work.slug));
+    if (fresh.ok) { current = fresh.post; work = { ...current }; }
+    await loadPosts();
+  }
+  keepPlace(renderDetail);
+}
+
+/* ── new-post dialog ─────────────────────────────────────────────────────── */
+function openNew() {
+  $("#newTitle").value = "";
+  $("#newDialog").showModal();
+  $("#newTitle").focus();
+}
+async function createNew(e) {
+  e.preventDefault();
+  const title = $("#newTitle").value.trim();
+  if (!title) { $("#newTitle").setAttribute("aria-invalid", "true"); $("#newTitle").focus(); return; }
+  $("#newTitle").removeAttribute("aria-invalid");
+  const r = await api("POST", "/api/posts", { title });
+  if (!r.ok) { toast(r.error || "Couldn't create the draft", "err"); return; }
+  $("#newDialog").close();
+  await loadPosts();
+  await selectPost(r.post.slug);
+  toast("Draft created", "ok");
+}
+
+/* ── connect-a-site dialog ───────────────────────────────────────────────── */
+function openConn() {
+  $("#cSiteRepo").value = CONFIG?.siteRepo || "";
+  $("#cContentDir").value = CONFIG?.contentDir || "content/posts";
+  $("#cBranch").value = CONFIG?.branch || "main";
+  const sel = $("#cAuthor");
+  sel.textContent = "";
+  const authors = authorOptions(CONFIG?.defaultAuthor);
+  if (!authors.length) sel.append(el("option", { value: "", text: "None" }));
+  for (const a of authors) sel.append(el("option", { value: a, text: a, selected: a === CONFIG?.defaultAuthor }));
+  $("#cAuthorHint").textContent = CONFIG?.authorFrom === "git"
+    ? "From your git config user.name."
+    : (authors.length ? "New posts start with this byline." : "Set defaultAuthor in pressroom.config.mjs, or git config user.name.");
+  renderConnStatus(isConnected() ? CONNECTION : null, isConnected() ? "Connected." : "", "ok");
+  $("#connDialog").showModal();
+  $("#cSiteRepo").focus();
+}
+
+function connValues() {
+  return {
+    siteRepo: $("#cSiteRepo").value.trim(),
+    contentDir: $("#cContentDir").value.trim() || "content/posts",
+    branch: $("#cBranch").value.trim() || "main",
+    defaultAuthor: $("#cAuthor").value,
+  };
+}
+
+/** The checklist (folder, git repo, content folder) and a message under it. */
+function renderConnStatus(conn, message, kind) {
+  const box = $("#connChecks");
+  box.textContent = "";
+  if (conn) {
+    const row = (ok, label, sub) => el("li", { class: ok ? "is-ok" : "is-no" }, [
+      glyph(ok ? "" : "cross"),
+      el("span", { class: "ex-sr-only", text: ok ? "Passed: " : "Failed: " }),
+      el("span", { text: label }),
+      sub ? el("span", { class: "pr-checks__path", text: sub }) : null,
+    ]);
+    box.append(row(conn.siteRepoExists, "Folder exists"));
+    box.append(row(conn.isGitRepo, "Git repository (.git present)"));
+    box.append(row(conn.contentDirExists, "Content folder", conn.contentPostsDir || ""));
+  }
+  const msg = $("#connMsg");
+  msg.textContent = "";
+  msg.className = "pr-msg" + (kind === "err" ? " is-err" : "");
+  if (message) msg.append(glyph(kind === "err" ? "cross" : ""), el("span", { text: message }));
+}
+
+async function checkConn() {
+  const v = connValues();
+  if (!v.siteRepo) { renderConnStatus(null, "A site repo path is required.", "err"); return; }
+  const r = await api("POST", "/api/config", { ...v, check: true });
+  renderConnStatus(r.connection || null, r.ok ? "Looks good. Connect to start publishing." : (r.error || "pressroom can't use this folder."), r.ok ? "ok" : "err");
+}
+
+async function saveConn(e) {
+  e.preventDefault();
+  const v = connValues();
+  if (!v.siteRepo) { renderConnStatus(null, "A site repo path is required.", "err"); return; }
+  const r = await api("POST", "/api/config", v);
+  if (!r.ok) { renderConnStatus(r.connection || null, r.error || "Couldn't connect.", "err"); return; }
+  CONFIG = r.config;
+  CONNECTION = r.connection;
+  $("#connDialog").close();
+  renderConnChip();
+  keepPlace(renderDetail); // Publish works now.
+  toast("Site connected", "ok");
+}
+
+/* ── wire up ─────────────────────────────────────────────────────────────── */
+$("#newBtn").addEventListener("click", openNew);
+$("#newCancel").addEventListener("click", () => $("#newDialog").close());
+$("#newForm").addEventListener("submit", createNew);
+$("#reloadBtn").addEventListener("click", loadPosts);
+for (const b of $$(".pr-conn")) b.addEventListener("click", openConn);
+$("#connCancel").addEventListener("click", () => $("#connDialog").close());
+$("#connCheck").addEventListener("click", checkConn);
+$("#connForm").addEventListener("submit", saveConn);
+// A click on the backdrop (the dialog element itself, outside its form) closes it.
+for (const dlg of $$(".pr-dialog")) dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); if (work) savePost(); }
+});
+window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+narrow.addEventListener("change", () => keepPlace(renderDetail));
+
+(async function init() {
+  const c = await api("GET", "/api/config");
+  if (c.ok) { CONFIG = c.config; CONNECTION = c.connection || null; }
+  else toast(c.error || "Couldn't read the config", "err");
+  renderConnChip();
+  await loadPosts();
+  renderDetail();
+})();
+</script>
+</body>
+</html>
