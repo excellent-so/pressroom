@@ -5,6 +5,8 @@
 Write posts locally, preview them, and publish each one as a git commit that contains only that post's file.
 Zero dependencies.
 
+Docs and how to use it: https://playbook.excellent.so/pressroom
+
 ![The pressroom viewer: the post list, the editor, and the markdown preview of a post](docs/screenshot.png)
 
 pressroom is for a blog that lives in a static site's git repo (Astro, Next.js, Eleventy, or anything that
